@@ -48,7 +48,6 @@
 
     <!-- artifact versions -->
     <asakusafw.version>0.8.0-SNAPSHOT</asakusafw.version>
-    <asakusafw-sdk.version>0.8.0-SNAPSHOT</asakusafw-sdk.version>
     <asakusafw-lang.version>0.3.0-SNAPSHOT</asakusafw-lang.version>
     <hadoop.version>2.7.2</hadoop.version>
     <asm.version>5.0.4</asm.version>

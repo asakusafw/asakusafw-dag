@@ -64,7 +64,7 @@ public class NioKeyBuffer implements KeyBuffer {
         return this;
     }
 
-    private static abstract class ViewBase implements View {
+    private abstract static class ViewBase implements View {
 
         ViewBase() {
             return;
