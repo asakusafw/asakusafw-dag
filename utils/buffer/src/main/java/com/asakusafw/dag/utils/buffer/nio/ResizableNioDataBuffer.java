@@ -17,6 +17,7 @@ package com.asakusafw.dag.utils.buffer.nio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.asakusafw.dag.utils.buffer.DataBuffer;
 import com.asakusafw.dag.utils.buffer.DataIoUtils;
@@ -26,7 +27,7 @@ import com.asakusafw.dag.utils.buffer.DataIoUtils;
  */
 public class ResizableNioDataBuffer implements DataBuffer {
 
-    private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocateDirect(0);
+    private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder());
 
     static final double DEFAULT_BUFFER_EXPANSION_FACTOR = 1.5;
 
