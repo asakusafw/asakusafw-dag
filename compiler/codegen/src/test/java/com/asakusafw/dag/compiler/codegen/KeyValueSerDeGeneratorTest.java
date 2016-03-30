@@ -63,6 +63,9 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
             object.serializeKey(model, kBuffer);
             object.serializeValue(model, vBuffer);
 
+            assertThat(kBuffer.getReadRemaining(), is(greaterThan(0)));
+            assertThat(vBuffer.getReadRemaining(), is(greaterThan(0)));
+
             MockDataModel copy = (MockDataModel) object.deserializePair(kBuffer, vBuffer);
             assertThat(kBuffer.getReadRemaining(), is(0));
             assertThat(vBuffer.getReadRemaining(), is(0));
@@ -74,7 +77,7 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
     }
 
     /**
-     * simple case.
+     * keys and sorts.
      */
     @Test
     public void full() {
@@ -94,6 +97,79 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
             DataBuffer vBuffer = new DataBuffer();
             object.serializeKey(model, kBuffer);
             object.serializeValue(model, vBuffer);
+
+            assertThat(kBuffer.getReadRemaining(), is(greaterThan(0)));
+            assertThat(vBuffer.getReadRemaining(), is(greaterThan(0)));
+
+            MockDataModel copy = (MockDataModel) object.deserializePair(kBuffer, vBuffer);
+            assertThat(kBuffer.getReadRemaining(), is(0));
+            assertThat(vBuffer.getReadRemaining(), is(0));
+            assertThat(copy, is(not(sameInstance(model))));
+            assertThat(copy.getKeyOption(), is(model.getKeyOption()));
+            assertThat(copy.getSortOption(), is(model.getSortOption()));
+            assertThat(copy.getValueOption(), is(model.getValueOption()));
+        });
+    }
+
+    /**
+     * empty keys.
+     */
+    @Test
+    public void empty_keys() {
+        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
+        Group group = Groups.parse(Arrays.asList());
+        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
+        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        loading(cl -> {
+            KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
+
+            MockDataModel model = new MockDataModel();
+            model.getKeyOption().modify(100);
+            model.getSortOption().modify(new BigDecimal("3.14"));
+            model.getValueOption().modify("Hello, world!");
+
+            DataBuffer kBuffer = new DataBuffer();
+            DataBuffer vBuffer = new DataBuffer();
+            object.serializeKey(model, kBuffer);
+            object.serializeValue(model, vBuffer);
+
+            assertThat(kBuffer.getReadRemaining(), is(greaterThan(0)));
+            assertThat(vBuffer.getReadRemaining(), is(greaterThan(0)));
+
+            MockDataModel copy = (MockDataModel) object.deserializePair(kBuffer, vBuffer);
+            assertThat(kBuffer.getReadRemaining(), is(0));
+            assertThat(vBuffer.getReadRemaining(), is(0));
+            assertThat(copy, is(not(sameInstance(model))));
+            assertThat(copy.getKeyOption(), is(model.getKeyOption()));
+            assertThat(copy.getSortOption(), is(model.getSortOption()));
+            assertThat(copy.getValueOption(), is(model.getValueOption()));
+        });
+    }
+
+    /**
+     * empty values.
+     */
+    @Test
+    public void empty_values() {
+        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
+        Group group = Groups.parse(Arrays.asList("key", "sort", "value"));
+        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
+        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        loading(cl -> {
+            KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
+
+            MockDataModel model = new MockDataModel();
+            model.getKeyOption().modify(100);
+            model.getSortOption().modify(new BigDecimal("3.14"));
+            model.getValueOption().modify("Hello, world!");
+
+            DataBuffer kBuffer = new DataBuffer();
+            DataBuffer vBuffer = new DataBuffer();
+            object.serializeKey(model, kBuffer);
+            object.serializeValue(model, vBuffer);
+
+            assertThat(kBuffer.getReadRemaining(), is(greaterThan(0)));
+            assertThat(vBuffer.getReadRemaining(), is(greaterThan(0)));
 
             MockDataModel copy = (MockDataModel) object.deserializePair(kBuffer, vBuffer);
             assertThat(kBuffer.getReadRemaining(), is(0));

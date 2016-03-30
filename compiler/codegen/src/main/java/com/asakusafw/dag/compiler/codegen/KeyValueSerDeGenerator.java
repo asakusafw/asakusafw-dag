@@ -105,21 +105,33 @@ public class KeyValueSerDeGenerator {
                         typeOf(IOException.class).getInternalName(),
                         typeOf(InterruptedException.class).getInternalName(),
                 });
-        LocalVarRef object = cast(v, 1, reference.getDeclaration());
-        LocalVarRef output = new LocalVarRef(Opcodes.ALOAD, 2);
-        for (PropertyReference property : properties) {
-            object.load(v);
-            getOption(v, property);
+        if (properties.isEmpty()) {
+            LocalVarRef output = new LocalVarRef(Opcodes.ALOAD, 2);
             output.load(v);
+            getConst(v, 0);
             v.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    SERDE.getInternalName(),
-                    "serialize",
-                    Type.getMethodDescriptor(
-                            Type.VOID_TYPE,
-                            typeOf(property.getType()),
-                            typeOf(DataOutput.class)),
-                    false);
+                    Opcodes.INVOKEINTERFACE,
+                    typeOf(DataOutput.class).getInternalName(),
+                    "writeByte",
+                    Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE),
+                    true);
+        } else {
+            LocalVarRef object = cast(v, 1, reference.getDeclaration());
+            LocalVarRef output = new LocalVarRef(Opcodes.ALOAD, 2);
+            for (PropertyReference property : properties) {
+                object.load(v);
+                getOption(v, property);
+                output.load(v);
+                v.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        SERDE.getInternalName(),
+                        "serialize",
+                        Type.getMethodDescriptor(
+                                Type.VOID_TYPE,
+                                typeOf(property.getType()),
+                                typeOf(DataOutput.class)),
+                        false);
+            }
         }
         v.visitInsn(Opcodes.RETURN);
         v.visitMaxs(0, 0);
@@ -155,19 +167,30 @@ public class KeyValueSerDeGenerator {
 
     private void putDeserializeBody(MethodVisitor v, List<PropertyReference> props,
             LocalVarRef input, LocalVarRef object) {
-        for (PropertyReference property : props) {
-            object.load(v);
-            getOption(v, property);
+        if (props.isEmpty()) {
             input.load(v);
             v.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    SERDE.getInternalName(),
-                    "deserialize",
-                    Type.getMethodDescriptor(
-                            Type.VOID_TYPE,
-                            typeOf(property.getType()),
-                            typeOf(DataInput.class)),
-                    false);
+                    Opcodes.INVOKEINTERFACE,
+                    typeOf(DataInput.class).getInternalName(),
+                    "readByte",
+                    Type.getMethodDescriptor(Type.BYTE_TYPE),
+                    true);
+            v.visitInsn(Opcodes.POP);
+        } else {
+            for (PropertyReference property : props) {
+                object.load(v);
+                getOption(v, property);
+                input.load(v);
+                v.visitMethodInsn(
+                        Opcodes.INVOKESTATIC,
+                        SERDE.getInternalName(),
+                        "deserialize",
+                        Type.getMethodDescriptor(
+                                Type.VOID_TYPE,
+                                typeOf(property.getType()),
+                                typeOf(DataInput.class)),
+                        false);
+            }
         }
     }
 }
