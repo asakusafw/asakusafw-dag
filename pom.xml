@@ -515,6 +515,12 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>com.asakusafw</groupId>
+        <artifactId>asakusa-test-trace-model</artifactId>
+        <version>${asakusafw.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw</groupId>
         <artifactId>asakusa-windgate-vocabulary</artifactId>
         <version>${asakusafw.version}</version>
         <scope>provided</scope>
