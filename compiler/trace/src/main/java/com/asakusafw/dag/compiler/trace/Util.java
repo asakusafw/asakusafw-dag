@@ -77,14 +77,13 @@ final class Util {
         assert factory != null;
         Method factoryMethod = findFactoryMethod(factoryClass, methodName);
         OperatorInfo info = factoryMethod.getAnnotation(OperatorInfo.class);
+        assert info != null;
         if (info.kind() == FlowPart.class) {
             LOG.warn(MessageFormat.format(
                     "Currently, this compiler does not support tracing for flow-part inputs/outputs: {0}",
                     factory.value().getName()));
             return null;
         }
-
-        assert info != null;
         if (portKind == PortKind.INPUT) {
             boolean found = false;
             for (OperatorInfo.Input port : info.input()) {

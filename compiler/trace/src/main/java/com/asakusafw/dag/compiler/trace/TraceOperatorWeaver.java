@@ -145,7 +145,7 @@ public class TraceOperatorWeaver implements OperatorRewriter {
                 .build();
     }
 
-    private static class Key {
+    private static final class Key {
 
         private final String declaring;
 

@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Tracing support for Asakusa DAG compiler
+ * Tracing support for Asakusa DAG compiler.
  */
 package com.asakusafw.dag.compiler.trace;
