@@ -92,13 +92,14 @@ public class DirectFileOutputCommitGeneratorTest extends ClassGeneratorTestRoot 
     private File prepare(
             String id, String physicalPath,
             String basePath, String resourceName) throws IOException, InterruptedException {
+        String sourceId = repository.getRelatedId(basePath);
         String container = repository.getContainerPath(basePath);
         String component = repository.getComponentPath(basePath);
         DirectDataSource dataSource = repository.getRelatedDataSource(container);
 
         OutputAttemptContext context = new OutputAttemptContext(
                 STAGE.getExecutionId(), "1",
-                id, new Counter());
+                sourceId, new Counter());
         dataSource.setupAttemptOutput(context);
         DataDefinition<MockData> def = BasicDataDefinition.newInstance(new MockDataFormat());
         try (ModelOutput<MockData> out = dataSource.openOutput(context, def, component, resourceName, new Counter())) {
