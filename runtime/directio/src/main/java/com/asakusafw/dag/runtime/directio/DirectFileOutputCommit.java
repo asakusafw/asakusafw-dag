@@ -19,8 +19,10 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.apache.hadoop.conf.Configuration;
@@ -105,14 +107,19 @@ public class DirectFileOutputCommit extends CustomVertexProcessor {
         assert transactionManager != null;
         assert variableResolver != null;
         assert specs != null;
-        List<CustomTaskInfo> results = new ArrayList<>();
+        Set<String> containerPaths = new LinkedHashSet<>();
         for (Spec spec : specs) {
             String basePath = variableResolver.apply(spec.basePath);
             String containerPath = repository.getContainerPath(basePath);
+            containerPaths.add(containerPath);
+        }
+        List<CustomTaskInfo> results = new ArrayList<>();
+        for (String containerPath : containerPaths) {
+            String id = repository.getRelatedId(containerPath);
             DirectDataSource source = repository.getRelatedDataSource(containerPath);
-            OutputTransactionContext context = transactionManager.acquire(spec.id);
+            OutputTransactionContext context = transactionManager.acquire(id);
             results.add(c -> {
-                LOG.debug("commiting Direct I/O file output: {}", spec);
+                LOG.debug("commiting Direct I/O file output: {}/*", containerPath);
                 source.commitTransactionOutput(context);
                 source.cleanupTransactionOutput(context);
                 transactionManager.release(context);

@@ -93,6 +93,7 @@ public class DirectFileOutputPrepare implements VertexProcessor {
             VertexProcessorContext context) throws IOException, InterruptedException {
         Invariants.requireNonNull(spec);
         StageInfo stage = context.getResource(StageInfo.class).orElseThrow(AssertionError::new);
+        String vertexId = context.getVertexId();
         Configuration conf = context.getResource(Configuration.class).orElseThrow(AssertionError::new);
         DirectFileCounterGroup counters = context.getResource(CounterRepository.class)
                 .orElse(CounterRepository.DETACHED)
@@ -105,7 +106,7 @@ public class DirectFileOutputPrepare implements VertexProcessor {
                     outputPattern,
                     PLACEHOLDER));
             lazy = () -> {
-                DirectFileOutputDriver d = resolve(conf, stage, counters);
+                DirectFileOutputDriver d = resolve(conf, stage, vertexId, counters);
                 String resolvedPath = new StringBuilder()
                         .append(outputPattern, 0, phAt)
                         .append(d.getContext().getAttemptId())
@@ -114,24 +115,25 @@ public class DirectFileOutputPrepare implements VertexProcessor {
                 return new FlatTask(d, d.newInstance(resolvedPath));
             };
         } else {
-            lazy = () -> new GroupTask(resolve(conf, stage, counters));
+            lazy = () -> new GroupTask(resolve(conf, stage, vertexId, counters));
         }
         return Optionals.empty();
     }
 
     private DirectFileOutputDriver resolve(
-            Configuration conf, StageInfo stage,
+            Configuration conf, StageInfo stage, String vertexId,
             DirectFileCounterGroup counters) throws IOException, InterruptedException {
         DirectDataSourceRepository repository = HadoopDataSourceUtil.loadRepository(conf);
         String base = stage.resolveUserVariables(spec.basePath);
+        String sourceId = repository.getRelatedId(base);
         DirectDataSource dataSource = repository.getRelatedDataSource(base);
         String componentPath = repository.getComponentPath(base);
         DataDefinition<?> definition = BasicDataDefinition.newInstance(
                 new HadoopObjectFactory(conf),
                 spec.formatType, null);
-        String taskId = String.valueOf(taskCounter.incrementAndGet());
+        String taskId = String.format("%s-%d", vertexId, taskCounter.incrementAndGet()); //$NON-NLS-1$
         DirectFileOutputDriver driver = new DirectFileOutputDriver(
-                new OutputAttemptContext(stage.getExecutionId(), taskId, spec.id, new Counter()),
+                new OutputAttemptContext(stage.getExecutionId(), taskId, sourceId, new Counter()),
                 dataSource, definition, componentPath,
                 stage::resolveUserVariables,
                 counters);
