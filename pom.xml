@@ -46,7 +46,7 @@
     <plugin.javadoc.version>2.10.3</plugin.javadoc.version>
 
     <!-- artifact versions -->
-    <asakusafw.version>0.8.0</asakusafw.version>
+    <asakusafw.version>0.8.1-SNAPSHOT</asakusafw.version>
     <asakusafw-lang.version>0.3.0</asakusafw-lang.version>
     <hadoop.version>2.7.2</hadoop.version>
     <asm.version>5.0.4</asm.version>
@@ -56,7 +56,7 @@
     <junit.version>4.11</junit.version>
     <hamcrest.version>1.3</hamcrest.version>
     <ant.version>1.9.6</ant.version>
-    <checkstyle.version>6.16.1</checkstyle.version>
+    <checkstyle.version>6.17</checkstyle.version>
 
     <!-- Build settings -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
