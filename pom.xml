@@ -4,7 +4,7 @@
   <name>Asakusa DAG Toolset</name>
   <groupId>com.asakusafw.dag</groupId>
   <artifactId>project</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <description>Asakusa DAG Toolset</description>
@@ -46,8 +46,8 @@
     <plugin.javadoc.version>2.10.3</plugin.javadoc.version>
 
     <!-- artifact versions -->
-    <asakusafw.version>0.8.0-SNAPSHOT</asakusafw.version>
-    <asakusafw-lang.version>0.3.0-SNAPSHOT</asakusafw-lang.version>
+    <asakusafw.version>0.8.0</asakusafw.version>
+    <asakusafw-lang.version>0.3.0</asakusafw-lang.version>
     <hadoop.version>2.7.2</hadoop.version>
     <asm.version>5.0.4</asm.version>
     <slf4j.version>1.7.18</slf4j.version>
