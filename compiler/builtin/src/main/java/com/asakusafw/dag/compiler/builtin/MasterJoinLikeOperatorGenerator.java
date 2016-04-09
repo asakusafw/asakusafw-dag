@@ -39,6 +39,7 @@ import com.asakusafw.dag.runtime.adapter.CoGroupOperation;
 import com.asakusafw.dag.runtime.adapter.DataTable;
 import com.asakusafw.dag.runtime.skeleton.MergeJoinResult;
 import com.asakusafw.dag.runtime.skeleton.TableJoinResult;
+import com.asakusafw.dag.runtime.table.BasicDataTable;
 import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.analyzer.util.MasterJoinOperatorUtil;
@@ -51,15 +52,19 @@ import com.asakusafw.vocabulary.operator.MasterJoin;
 
 /**
  * An abstract implementation of {@link OperatorNodeGenerator} for master join like operators.
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public abstract class MasterJoinLikeOperatorGenerator extends UserOperatorNodeGenerator {
 
     @Override
     protected final NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
         checkPorts(operator, i -> i == 2, i -> i >= 1);
-
         OperatorInput master = operator.getInputs().get(MasterJoin.ID_INPUT_MASTER);
-        if (context.isSideData(master)) {
+        OperatorInput transaction = operator.getInputs().get(MasterJoin.ID_INPUT_TRANSACTION);
+        if (isEmptyTableJoin(context, master, transaction)) {
+            return generateEmptyJoin(context, operator, target);
+        } else if (context.isSideData(master)) {
             return generateTableJoin(context, operator, target);
         } else {
             return generateMergeJoin(context, operator, target);
@@ -115,6 +120,51 @@ public abstract class MasterJoinLikeOperatorGenerator extends UserOperatorNodeGe
                 method -> {
                     method.visitVarInsn(Opcodes.ALOAD, 0);
                     method.visitVarInsn(Opcodes.ALOAD, 1); // the first argument is data table
+                    method.visitMethodInsn(Opcodes.INVOKESPECIAL,
+                            typeOf(TableJoinResult.class).getInternalName(),
+                            CONSTRUCTOR_NAME,
+                            Type.getMethodDescriptor(Type.VOID_TYPE, typeOf(DataTable.class)),
+                            false);
+                },
+                method -> {
+                    setOperatorField(method, operator, impl);
+                    initializer.accept(method);
+                });
+        defineBuildKey(context, writer, transaction.getDataType(), transaction.getGroup());
+        defineSelection(context, writer, operator, impl, dependencies);
+        defineProcess(context, writer, operator, impl, dependencies, target);
+        writer.visitEnd();
+        return new OperatorNodeInfo(
+                new ClassData(target, writer::toByteArray),
+                transaction.getDataType(),
+                context.getDependencies(injects));
+    }
+
+    private boolean isEmptyTableJoin(Context context, OperatorInput master, OperatorInput transaction) {
+        return context.isSideData(master) == false
+                && context.getGroupIndex(master) < 0
+                && context.getGroupIndex(transaction) < 0;
+    }
+
+    private NodeInfo generateEmptyJoin(Context context, UserOperator operator, ClassDescription target) {
+        OperatorInput transaction = operator.getInputs().get(MasterJoin.ID_INPUT_TRANSACTION);
+        List<OperatorProperty> injects = new ArrayList<>();
+        injects.addAll(operator.getOutputs());
+        injects.addAll(operator.getArguments());
+
+        ClassWriter writer = newWriter(target, TableJoinResult.class);
+        FieldRef impl = defineOperatorField(writer, operator, target);
+        Consumer<MethodVisitor> initializer = defineExtraFields(writer, context, operator, target);
+        Map<OperatorProperty, FieldRef> dependencies = defineConstructor(
+                context, injects,
+                target, writer,
+                method -> {
+                    method.visitVarInsn(Opcodes.ALOAD, 0);
+                    method.visitMethodInsn(Opcodes.INVOKESTATIC,
+                            typeOf(BasicDataTable.class).getInternalName(),
+                            "empty",
+                            Type.getMethodDescriptor(typeOf(DataTable.class)),
+                            false);
                     method.visitMethodInsn(Opcodes.INVOKESPECIAL,
                             typeOf(TableJoinResult.class).getInternalName(),
                             CONSTRUCTOR_NAME,
@@ -209,7 +259,6 @@ public abstract class MasterJoinLikeOperatorGenerator extends UserOperatorNodeGe
         method.visitMaxs(0, 0);
         method.visitEnd();
     }
-
 
     /**
      * Defines the body of {@code process} method.

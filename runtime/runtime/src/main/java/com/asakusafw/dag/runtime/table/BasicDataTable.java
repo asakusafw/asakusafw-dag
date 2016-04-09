@@ -28,6 +28,8 @@ import com.asakusafw.dag.runtime.adapter.KeyBuffer;
 /**
  * Basic implementation of {@link DataTable}.
  * @param <T> the data type
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public class BasicDataTable<T> implements DataTable<T> {
 
@@ -52,6 +54,16 @@ public class BasicDataTable<T> implements DataTable<T> {
             return Collections.emptyList();
         }
         return list;
+    }
+
+    /**
+     * Returns an empty table.
+     * @param <T> the data type
+     * @return an empty table
+     * @since 0.1.1
+     */
+    public static <T> DataTable<T> empty() {
+        return new BasicDataTable<>(Collections.emptyMap(), () -> VoidKeyBuffer.INSTANCE);
     }
 
     /**

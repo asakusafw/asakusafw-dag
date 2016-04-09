@@ -173,7 +173,7 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
     }
 
     /**
-     * missing masters.
+     * missing masters on table.
      */
     @Test
     public void missing_table() {
@@ -235,6 +235,30 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
         });
         assertThat(j.get(MockDataModel::getValue), containsInAnyOrder("M1T0!", "M1T1!"));
         assertThat(m.get(MockDataModel::getValue), hasSize(0));
+    }
+
+    /**
+     * orphaned master.
+     */
+    @Test
+    public void orphaned_master() {
+        UserOperator operator = load("simple").build();
+        NodeInfo info = generate(operator, c -> {
+            // missing table, and is not a group input
+            c.put(operator.findInput("master"), null);
+            c.put(operator.findInput("transaction"), null);
+            c.put(operator.findOutput("found"), result(Descriptions.typeOf(MockDataModel.class)));
+            c.put(operator.findOutput("missing"), result(Descriptions.typeOf(MockDataModel.class)));
+        });
+        MockSink<MockDataModel> j = new MockSink<>();
+        MockSink<MockDataModel> m = new MockSink<>();
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(j, m);
+            r.add(new MockDataModel(0, "T0"));
+            r.add(new MockDataModel(0, "T1"));
+        });
+        assertThat(j.get(MockDataModel::getValue), hasSize(0));
+        assertThat(m.get(MockDataModel::getValue), containsInAnyOrder("T0", "T1"));
     }
 
     private NodeInfo generateWithTable(UserOperator operator) {
