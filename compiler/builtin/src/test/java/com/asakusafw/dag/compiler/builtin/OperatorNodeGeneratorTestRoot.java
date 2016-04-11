@@ -186,12 +186,21 @@ public abstract class OperatorNodeGeneratorTestRoot extends ClassGeneratorTestRo
 
         @Override
         public boolean isSideData(OperatorInput input) {
-            return dependencies.containsKey(input);
+            return dependencies.get(input) != null;
         }
 
         @Override
         public int getGroupIndex(OperatorInput input) {
-            return input.getOwner().getInputs().indexOf(input);
+            int index = 0;
+            for (OperatorInput in : input.getOwner().getInputs()) {
+                if (dependencies.containsKey(in) == false) {
+                    if (in == input) {
+                        return index;
+                    }
+                    index++;
+                }
+            }
+            return -1;
         }
     }
 }
