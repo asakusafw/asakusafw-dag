@@ -327,7 +327,11 @@ public class SerDeNativeTest {
 
         assertThat(cmp.compare(newDecimal("1"), newDecimal("1")), is(0));
         assertThat(cmp.compare(newDecimal("1.1"), newDecimal("1")), greaterThan(0));
+        assertThat(cmp.compare(newDecimal("1.10"), newDecimal("1")), greaterThan(0));
+        assertThat(cmp.compare(newDecimal("1.10"), newDecimal("2")), lessThan(0));
         assertThat(cmp.compare(newDecimal("1"), newDecimal("1.1")), lessThan(0));
+        assertThat(cmp.compare(newDecimal("1"), newDecimal("1.10")), lessThan(0));
+        assertThat(cmp.compare(newDecimal("2"), newDecimal("1.10")), greaterThan(0));
 
         assertThat(cmp.compare(newDecimal("1"), newDecimal("1")), is(0));
         assertThat(cmp.compare(newDecimal("1"), newDecimal("-1")), greaterThan(0));

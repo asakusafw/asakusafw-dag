@@ -199,7 +199,6 @@ const static int8_t DECIMAL_PLUS_MASK = 1 << 1;
 const static int8_t DECIMAL_COMPACT_MASK = 1 << 2;
 
 static
-inline
 int compare_compact_decimal(
         int32_t scale_a, int64_t unscaled_a,
         int32_t scale_b, int64_t unscaled_b) {
@@ -215,24 +214,21 @@ int compare_compact_decimal(
     } else if (unscaled_b == 0) {
         return +1;
     }
-    // FIXME simple impl
     if (scale_a > scale_b) {
         auto scale = scale_a - scale_b;
-        int64_t current = unscaled_b;
+        auto current = unscaled_a;
+        bool rest = false;
         for (int32_t i = 0; i < scale; i++) {
-            current /= 10;
-            if (current == 0) {
-                return +1;
+            auto next = current / 10;
+            rest |= (current % 10 != 0);
+            if (next == 0) {
+                return -1;
             }
+            current = next;
         }
-        int diff = compare_value(unscaled_a, current);
+        int diff = compare_value(current, unscaled_b);
         if (diff == 0) {
-            for (int32_t i = 0; i < scale; i++) {
-                if (current % 10 != 0) {
-                    return -1;
-                }
-            }
-            return 0;
+            return rest ? +1 : 0;
         }
         return diff;
     } else /*if (scale_a < scale_b)*/ {
