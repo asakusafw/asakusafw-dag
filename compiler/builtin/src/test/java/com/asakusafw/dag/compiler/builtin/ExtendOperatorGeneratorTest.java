@@ -31,6 +31,7 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
 import com.asakusafw.runtime.core.Result;
 import com.asakusafw.runtime.testing.MockResult;
+import com.asakusafw.runtime.value.IntOption;
 
 /**
  * Test for {@link ExtendOperatorGenerator}.
@@ -54,5 +55,33 @@ public class ExtendOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         });
         List<String> r = Lang.project(results.getResults(), m -> m.getValue());
         assertThat(r, contains("Hello, world!"));
+    }
+
+    /**
+     * each extended properties must be set to {@code null}.
+     */
+    @Test
+    public void extend_with_null() {
+        CoreOperator operator = CoreOperator.builder(CoreOperatorKind.EXTEND)
+                .input("in", Descriptions.typeOf(MockValueModel.class))
+                .output("out", Descriptions.typeOf(MockDataModel.class))
+                .build();
+        NodeInfo info = generate(operator);
+        MockResult<MockDataModel> results = new MockResult<MockDataModel>() {
+            @Override
+            public void add(MockDataModel result) {
+                assertThat(result.getKeyOption(), is(new IntOption()));
+                result.setKey(-1);
+                super.add(new MockDataModel(result));
+            }
+        };
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(results);
+            r.add(new MockValueModel("Hello0"));
+            r.add(new MockValueModel("Hello1"));
+            r.add(new MockValueModel("Hello2"));
+        });
+        List<String> r = Lang.project(results.getResults(), m -> m.getValue());
+        assertThat(r, containsInAnyOrder("Hello0", "Hello1", "Hello2"));
     }
 }

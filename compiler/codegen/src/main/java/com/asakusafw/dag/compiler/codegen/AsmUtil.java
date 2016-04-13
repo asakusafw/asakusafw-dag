@@ -44,9 +44,12 @@ import com.asakusafw.lang.compiler.model.description.MethodDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription.TypeKind;
 import com.asakusafw.runtime.core.Result;
+import com.asakusafw.runtime.value.ValueOption;
 
 /**
  * Utilities for ASM.
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public final class AsmUtil {
 
@@ -56,6 +59,8 @@ public final class AsmUtil {
     public static final String CONSTRUCTOR_NAME = "<init>"; //$NON-NLS-1$
 
     private static final ClassDescription RESULT_TYPE = Descriptions.classOf(Result.class);
+
+    private static final ClassDescription VALUE_OPTION_TYPE = Descriptions.classOf(ValueOption.class);
 
     private AsmUtil() {
         return;
@@ -422,6 +427,18 @@ public final class AsmUtil {
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
                 typeOf(dataType).getInternalName(), "copyFrom",
                 Type.getMethodDescriptor(Type.VOID_TYPE, typeOf(dataType)),
+                false);
+    }
+
+    /**
+     * Sets {@code null} to a {@code ValueOption}.
+     * @param method the target method
+     * @since 0.1.1
+     */
+    public static void setNullOption(MethodVisitor method) {
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                VALUE_OPTION_TYPE.getInternalName(), "setNull",
+                Type.getMethodDescriptor(typeOf(VALUE_OPTION_TYPE)),
                 false);
     }
 

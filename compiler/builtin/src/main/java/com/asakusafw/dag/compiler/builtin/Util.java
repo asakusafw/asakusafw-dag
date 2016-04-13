@@ -19,6 +19,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ import com.asakusafw.lang.compiler.analyzer.util.PropertyMapping;
 import com.asakusafw.lang.compiler.api.DataModelLoader;
 import com.asakusafw.lang.compiler.api.reference.DataModelReference;
 import com.asakusafw.lang.compiler.api.reference.PropertyReference;
+import com.asakusafw.lang.compiler.model.PropertyName;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.lang.compiler.model.graph.Group;
@@ -59,6 +61,7 @@ import com.asakusafw.lang.compiler.model.graph.OperatorOutput;
 import com.asakusafw.lang.compiler.model.graph.OperatorPort;
 import com.asakusafw.lang.compiler.model.graph.OperatorProperty;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
+import com.asakusafw.runtime.value.ValueOption;
 
 final class Util {
 
@@ -195,6 +198,12 @@ final class Util {
                 .collect(Collectors.toMap(
                         Function.identity(),
                         p -> Invariants.safe(() -> loader.load(p.getDataType()))));
+        Map<OperatorOutput, Map<PropertyName, PropertyReference>> open = new HashMap<>();
+        outputTypes.forEach((p, m) -> open.put(p, m.getProperties().stream()
+                .collect(Collectors.toMap(
+                        PropertyReference::getName,
+                        Function.identity()))));
+
         for (PropertyMapping mapping : mappings) {
             ValueRef srcRef = Invariants.requireNonNull(inputRefs.get(mapping.getSourcePort()));
             PropertyReference srcProp = Invariants.requireNonNull(
@@ -203,6 +212,7 @@ final class Util {
             PropertyReference dstProp = Invariants.requireNonNull(
                     outputTypes.get(mapping.getDestinationPort()).findProperty(mapping.getDestinationProperty()));
             Invariants.require(srcProp.getType().equals(dstProp.getType()));
+            open.get(mapping.getDestinationPort()).remove(mapping.getDestinationProperty());
 
             dstRef.load(method);
             AsmUtil.getOption(method, dstProp);
@@ -212,6 +222,21 @@ final class Util {
 
             AsmUtil.copyOption(method, srcProp.getType());
         }
+        open.forEach((p, map) -> {
+            ValueRef ref = outputRefs.get(p);
+            // always non null?
+            if (ref != null) {
+                map.forEach((name, prop) -> {
+                    ref.load(method);
+                    AsmUtil.getOption(method, prop);
+                    method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                            typeOf(ValueOption.class).getInternalName(), "setNull",
+                            Type.getMethodDescriptor(typeOf(ValueOption.class)),
+                            false);
+
+                });
+            }
+        });
     }
 
     static void defineBuildKey(

@@ -37,7 +37,6 @@ import com.asakusafw.runtime.testing.MockResult;
 /**
  * Test for {@link BufferOperatorGenerator}.
  */
-@SuppressWarnings("deprecation")
 public class BufferOperatorGeneratorTest extends ClassGeneratorTestRoot {
 
     /**
@@ -49,13 +48,13 @@ public class BufferOperatorGeneratorTest extends ClassGeneratorTestRoot {
         MockResult<MockDataModel> m1 = new MockResult<>();
         check(Arrays.asList(m0, m1), r -> {
             MockDataModel o = new MockDataModel();
-            o.getKeyOption().modify(1);
+            o.setKey(1);
             r.add(o);
         });
         assertThat(m0.getResults(), hasSize(1));
         assertThat(m1.getResults(), hasSize(1));
-        assertThat(m0.getResults().get(0).getKeyOption().get(), is(1));
-        assertThat(m1.getResults().get(0).getKeyOption().get(), is(1));
+        assertThat(m0.getResults().get(0).getKey(), is(1));
+        assertThat(m1.getResults().get(0).getKey(), is(1));
     }
 
     /**
@@ -66,26 +65,74 @@ public class BufferOperatorGeneratorTest extends ClassGeneratorTestRoot {
         MockResult<MockDataModel> m0 = new MockResult<MockDataModel>() {
             @Override
             protected MockDataModel bless(MockDataModel result) {
-                result.getKeyOption().modify(result.getKeyOption().get() + 1);
-                return result;
+                result.setKey(result.getKey() + 1);
+                return new MockDataModel(result);
             }
         };
         MockResult<MockDataModel> m1 = new MockResult<MockDataModel>() {
             @Override
             protected MockDataModel bless(MockDataModel result) {
-                result.getKeyOption().modify(result.getKeyOption().get() + 2);
-                return result;
+                result.setKey(result.getKey() + 2);
+                return new MockDataModel(result);
             }
         };
         check(Arrays.asList(m0, m1), r -> {
             MockDataModel o = new MockDataModel();
-            o.getKeyOption().modify(1);
+            o.setKey(1);
             r.add(o);
         });
         assertThat(m0.getResults(), hasSize(1));
         assertThat(m1.getResults(), hasSize(1));
-        assertThat(m0.getResults().get(0).getKeyOption().get(), is(2));
-        assertThat(m1.getResults().get(0).getKeyOption().get(), is(3));
+        assertThat(m0.getResults().get(0).getKey(), is(2));
+        assertThat(m1.getResults().get(0).getKey(), is(3));
+    }
+
+    /**
+     * multiple branches.
+     */
+    @Test
+    public void multiple() {
+        MockResult<MockDataModel> m0 = new MockResult<MockDataModel>() {
+            @Override
+            protected MockDataModel bless(MockDataModel result) {
+                result.setKey(result.getKey() + 1);
+                return new MockDataModel(result);
+            }
+        };
+        MockResult<MockDataModel> m1 = new MockResult<MockDataModel>() {
+            @Override
+            protected MockDataModel bless(MockDataModel result) {
+                result.setKey(result.getKey() + 2);
+                return new MockDataModel(result);
+            }
+        };
+        MockResult<MockDataModel> m2 = new MockResult<MockDataModel>() {
+            @Override
+            protected MockDataModel bless(MockDataModel result) {
+                result.setKey(result.getKey() + 3);
+                return new MockDataModel(result);
+            }
+        };
+        MockResult<MockDataModel> m3 = new MockResult<MockDataModel>() {
+            @Override
+            protected MockDataModel bless(MockDataModel result) {
+                result.setKey(result.getKey() + 4);
+                return new MockDataModel(result);
+            }
+        };
+        check(Arrays.asList(m0, m1, m2, m3), r -> {
+            MockDataModel o = new MockDataModel();
+            o.setKey(1);
+            r.add(o);
+        });
+        assertThat(m0.getResults(), hasSize(1));
+        assertThat(m1.getResults(), hasSize(1));
+        assertThat(m2.getResults(), hasSize(1));
+        assertThat(m3.getResults(), hasSize(1));
+        assertThat(m0.getResults().get(0).getKey(), is(2));
+        assertThat(m1.getResults().get(0).getKey(), is(3));
+        assertThat(m2.getResults().get(0).getKey(), is(4));
+        assertThat(m3.getResults().get(0).getKey(), is(5));
     }
 
     private void check(List<? extends Result<MockDataModel>> list, Consumer<Result<MockDataModel>> callback) {
