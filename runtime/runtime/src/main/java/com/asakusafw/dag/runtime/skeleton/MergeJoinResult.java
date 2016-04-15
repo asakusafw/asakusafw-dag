@@ -27,6 +27,8 @@ import com.asakusafw.runtime.core.Result;
  * An adapter implementation of {@link CoGroupOperation} for merge-join operations.
  * @param <TMaster> the master object type
  * @param <TTransaction> the transaction object type
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public abstract class MergeJoinResult<TMaster, TTransaction> implements Result<CoGroupOperation.Input> {
 
@@ -51,10 +53,7 @@ public abstract class MergeJoinResult<TMaster, TTransaction> implements Result<C
             CoGroupOperation.Cursor<TTransaction> transactions = getCursor(result, indexTransaction);
             while (transactions.nextObject()) {
                 TTransaction transaction = transactions.getObject();
-                TMaster master = null;
-                if (masterCandidates.isEmpty() == false) {
-                    master = selectMaster(masterCandidates, transaction);
-                }
+                TMaster master = selectMaster(masterCandidates, transaction);
                 process(master, transaction);
             }
         } catch (IOException | InterruptedException e) {
@@ -69,7 +68,9 @@ public abstract class MergeJoinResult<TMaster, TTransaction> implements Result<C
      * @return the selected master object, or {@code null} if there is no suitable master object
      */
     protected TMaster selectMaster(List<TMaster> masterCandidates, TTransaction transaction) {
-        assert masterCandidates.isEmpty() == false;
+        if (masterCandidates.isEmpty()) {
+            return null;
+        }
         return masterCandidates.get(0);
     }
 

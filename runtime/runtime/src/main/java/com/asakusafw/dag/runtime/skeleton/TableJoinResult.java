@@ -26,6 +26,8 @@ import com.asakusafw.runtime.core.Result;
  * An adapter implementation of table-join operations.
  * @param <TMaster> the master object type
  * @param <TTransaction> the transaction object type
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public abstract class TableJoinResult<TMaster, TTransaction>
         implements KeyExtractor<TTransaction>, Result<TTransaction> {
@@ -49,10 +51,7 @@ public abstract class TableJoinResult<TMaster, TTransaction>
         kb.clear();
         buildKey(kb, transaction);
         List<TMaster> masterCandidates = dataTable.getList(kb);
-        TMaster master = null;
-        if (masterCandidates.isEmpty() == false) {
-            master = selectMaster(masterCandidates, transaction);
-        }
+        TMaster master = selectMaster(masterCandidates, transaction);
         process(master, transaction);
     }
 
@@ -71,7 +70,9 @@ public abstract class TableJoinResult<TMaster, TTransaction>
      * @return the selected master object, or {@code null} if there is no suitable master object
      */
     protected TMaster selectMaster(List<TMaster> masterCandidates, TTransaction transaction) {
-        assert masterCandidates.isEmpty() == false;
+        if (masterCandidates.isEmpty()) {
+            return null;
+        }
         return masterCandidates.get(0);
     }
 
