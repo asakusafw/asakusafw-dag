@@ -239,7 +239,7 @@ public final class Lang {
      * @throws T if the throwable object is instance of the specified type
      */
     public static <T extends Throwable> void rethrow(Throwable throwable, Class<T> type) throws T {
-        if (type.isInstance(type)) {
+        if (type.isInstance(throwable)) {
             throw type.cast(throwable);
         }
     }
