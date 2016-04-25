@@ -18,6 +18,7 @@ package com.asakusafw.dag.compiler.codegen;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -27,8 +28,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.runtime.io.ValueOptionSerDe;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -38,6 +45,7 @@ import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.api.reference.DataModelReference;
 import com.asakusafw.lang.compiler.api.reference.PropertyReference;
 import com.asakusafw.lang.compiler.common.Location;
+import com.asakusafw.lang.compiler.common.ResourceContainer;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.lang.compiler.model.graph.Group;
@@ -55,15 +63,43 @@ import com.asakusafw.runtime.value.StringOption;
 
 /**
  * Generates {@code C++ style} value comparators.
+ * @since 0.1.0
+ * @version 0.1.1
  */
 public class NativeValueComparatorGenerator implements Io {
 
+    static final Logger LOG = LoggerFactory.getLogger(NativeValueComparatorGenerator.class);
+
     /**
      * The header file name.
+     * @deprecated Use {@link #copyHeaderFiles(ResourceContainer, Location)} instead.
      */
+    @Deprecated
     public static final String HEADER_FILE_NAME = "serde.hpp";
 
     static final Charset ENCODE = StandardCharsets.UTF_8;
+
+    private static final Location ATTACHED_BASE = Location.of("com/asakusafw/dag/runtime/io/native"); //$NON-NLS-1$
+
+    private static final Location HEADER_FILE_BASE = ATTACHED_BASE.append("include"); //$NON-NLS-1$
+
+    private static final Location SOURCE_FILE_BASE = ATTACHED_BASE.append("src"); //$NON-NLS-1$
+
+    static final Set<Location> HEADER_FILE_NAMES = Stream.of(new String[] {
+            "serde.hpp", //$NON-NLS-1$
+    })
+            .map(Location::of)
+            .collect(Collectors.collectingAndThen(
+                    Collectors.toSet(),
+                    Collections::unmodifiableSet));
+
+    static final Set<Location> SOURCE_FILE_NAMES = Stream.of(new String[] {
+            // empty files
+    })
+            .map(Location::of)
+            .collect(Collectors.collectingAndThen(
+                    Collectors.toSet(),
+                    Collections::unmodifiableSet));
 
     static final Location HEADER_PATH =
             Location.of("com/asakusafw/dag/runtime/io/native/include/serde.hpp"); //$NON-NLS-1$
@@ -71,8 +107,6 @@ public class NativeValueComparatorGenerator implements Io {
     private static final Pattern PATTERN_VARIABLE = Pattern.compile("\\$\\{(\\w+)\\}"); //$NON-NLS-1$
 
     private static final String[] FILE_HEADER = {
-            "#include \"serde.hpp\"",
-            "",
             "#define COMPARE_T(t, a, b, op) \\",
             "{ \\",
             "    int diff = compare_##t((a), (b)); \\",
@@ -172,6 +206,9 @@ public class NativeValueComparatorGenerator implements Io {
     private void append(String[] lines, Map<String, String> variables) {
         if (first) {
             first = false;
+            for (Location include : HEADER_FILE_NAMES) {
+                writer.printf("#include \"%s\"%n", include.toPath());
+            }
             append(FILE_HEADER, Collections.emptyMap());
         }
         append(writer, lines, variables);
@@ -198,9 +235,60 @@ public class NativeValueComparatorGenerator implements Io {
     }
 
     /**
+     * Copies C++ header files ({@code *.hpp}) into the target location.
+     * @param container the target container
+     * @param base the target base location
+     * @since 0.1.1
+     */
+    public static void copyHeaderFiles(ResourceContainer container, Location base) {
+        for (Location name : HEADER_FILE_NAMES) {
+            copy(container, base, HEADER_FILE_BASE, name);
+        }
+    }
+
+    /**
+     * Copies C++ source files ({@code *.cpp}) into the target location.
+     * @param container the target container
+     * @param base the target base location
+     * @since 0.1.1
+     */
+    public static void copySourceFiles(ResourceContainer container, Location base) {
+        for (Location name : SOURCE_FILE_NAMES) {
+            copy(container, base, SOURCE_FILE_BASE, name);
+        }
+    }
+
+    private static void copy(
+            ResourceContainer destination,
+            Location destinationBase,
+            Location sourceBase,
+            Location name) {
+        ClassLoader loader = ValueOptionSerDe.class.getClassLoader();
+        Location src = sourceBase.append(name);
+        Location dst = destinationBase.append(name);
+        LOG.debug("copy: {} -> {}", src, dst);
+        try (InputStream in = loader.getResourceAsStream(src.toPath())) {
+            Invariants.requireNonNull(in, () -> src);
+            try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(destination.addResource(dst), ENCODE));
+                    Scanner s = new Scanner(new InputStreamReader(in, ENCODE))) {
+                while (s.hasNextLine()) {
+                    writer.println(s.nextLine());
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(MessageFormat.format(
+                    "error occurred while copying file: {0} -> {1}",
+                    src, dst), e);
+        }
+    }
+
+    /**
      * Puts header file contents into the target writer.
      * @param writer the target writer
+     * @deprecated Use {@link #copySourceFiles(ResourceContainer, Location)} and
+     *     {@link #copySourceFiles(ResourceContainer, Location)} instead
      */
+    @Deprecated
     public static void putHeader(PrintWriter writer) {
         try (InputStream in = ValueOptionSerDe.class.getClassLoader().getResourceAsStream(HEADER_PATH.toPath())) {
             Invariants.requireNonNull(in);
