@@ -51,6 +51,10 @@ public class SummarizeOperatorPatch implements OperatorRewriter {
             if (SummarizedModelUtil.isSupported(operator) == false) {
                 continue;
             }
+            if (operator.getAttribute(Patched.class) == Patched.INSTANCE) {
+                // already patched
+                continue;
+            }
             Operator patched = patch(context, (UserOperator) operator);
             Operators.replace(operator, patched);
             graph.remove(operator);
@@ -75,6 +79,7 @@ public class SummarizeOperatorPatch implements OperatorRewriter {
         for (Class<?> attributeType : operator.getAttributeTypes()) {
             putAttribute(builder, operator, attributeType);
         }
+        builder.attribute(Patched.class, Patched.INSTANCE);
         return builder.build();
     }
 
@@ -103,5 +108,15 @@ public class SummarizeOperatorPatch implements OperatorRewriter {
                 Lang.project(origin.getGrouping(), n -> Invariants.requireNonNull(map.get(n))),
                 Collections.emptyList());
         return patched;
+    }
+
+    private static final class Patched {
+
+        static final Patched INSTANCE = new Patched();
+
+        @Override
+        public String toString() {
+            return "true";
+        }
     }
 }

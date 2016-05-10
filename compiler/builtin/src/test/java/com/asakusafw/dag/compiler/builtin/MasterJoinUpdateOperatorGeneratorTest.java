@@ -153,6 +153,31 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
     }
 
     /**
+     * w/ selector.
+     */
+    @Test
+    public void selection_merge_fixed() {
+        UserOperator operator = load("fixed")
+                .argument("p", Descriptions.valueOf("*"))
+                .build();
+        NodeInfo info = generate(operator);
+        MockSink<MockDataModel> j = new MockSink<>();
+        MockSink<MockDataModel> m = new MockSink<>();
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(j, m, "*");
+            r.add(cogroup(new Object[][] {
+                {},
+                {
+                    new MockDataModel(0, "T0"),
+                    new MockDataModel(0, "T1"),
+                },
+            }));
+        });
+        assertThat(j.get(MockDataModel::getValue), containsInAnyOrder("*T0*", "*T1*"));
+        assertThat(m.get(MockDataModel::getValue), hasSize(0));
+    }
+
+    /**
      * simple case.
      */
     @Test
@@ -173,7 +198,7 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
     }
 
     /**
-     * missing masters.
+     * missing masters on table.
      */
     @Test
     public void missing_table() {
@@ -237,6 +262,50 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
         assertThat(m.get(MockDataModel::getValue), hasSize(0));
     }
 
+    /**
+     * w/ selector.
+     */
+    @Test
+    public void selection_table_fixed() {
+        UserOperator operator = load("fixed")
+                .argument("p", Descriptions.valueOf("*"))
+                .build();
+        NodeInfo info = generateWithTable(operator);
+        MockSink<MockDataModel> j = new MockSink<>();
+        MockSink<MockDataModel> m = new MockSink<>();
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(BasicDataTable.empty(), j, m, "*");
+            r.add(new MockDataModel(0, "T0"));
+            r.add(new MockDataModel(0, "T1"));
+        });
+        assertThat(j.get(MockDataModel::getValue), containsInAnyOrder("*T0*", "*T1*"));
+        assertThat(m.get(MockDataModel::getValue), hasSize(0));
+    }
+
+    /**
+     * orphaned master.
+     */
+    @Test
+    public void orphaned_master() {
+        UserOperator operator = load("simple").build();
+        NodeInfo info = generate(operator, c -> {
+            // missing table, and is not a group input
+            c.put(operator.findInput("master"), null);
+            c.put(operator.findInput("transaction"), null);
+            c.put(operator.findOutput("found"), result(Descriptions.typeOf(MockDataModel.class)));
+            c.put(operator.findOutput("missing"), result(Descriptions.typeOf(MockDataModel.class)));
+        });
+        MockSink<MockDataModel> j = new MockSink<>();
+        MockSink<MockDataModel> m = new MockSink<>();
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(j, m);
+            r.add(new MockDataModel(0, "T0"));
+            r.add(new MockDataModel(0, "T1"));
+        });
+        assertThat(j.get(MockDataModel::getValue), hasSize(0));
+        assertThat(m.get(MockDataModel::getValue), containsInAnyOrder("T0", "T1"));
+    }
+
     private NodeInfo generateWithTable(UserOperator operator) {
         NodeInfo info = generate(operator, c -> {
             c.put(operator.findInput("master"), new DataTableNode("master",
@@ -284,6 +353,16 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
                     .filter(m -> Objects.equals(m.getValue(), parameter))
                     .findAny()
                     .orElse(null);
+        }
+
+        @MasterJoinUpdate(selection = "fixer")
+        public void fixed(MockKeyValueModel k, MockDataModel v, String parameter) {
+            parameterized(k, v, parameter);
+        }
+
+        @MasterSelection
+        public MockKeyValueModel fixer(List<MockKeyValueModel> k, MockDataModel v, String parameter) {
+            return new MockKeyValueModel(parameter);
         }
     }
 }
