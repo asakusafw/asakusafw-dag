@@ -70,13 +70,6 @@ public class NativeValueComparatorGenerator implements Io {
 
     static final Logger LOG = LoggerFactory.getLogger(NativeValueComparatorGenerator.class);
 
-    /**
-     * The header file name.
-     * @deprecated Use {@link #copyHeaderFiles(ResourceContainer, Location)} instead.
-     */
-    @Deprecated
-    public static final String HEADER_FILE_NAME = "serde.hpp";
-
     static final Charset ENCODE = StandardCharsets.UTF_8;
 
     private static final Location ATTACHED_BASE = Location.of("com/asakusafw/dag/runtime/io/native"); //$NON-NLS-1$
@@ -87,6 +80,7 @@ public class NativeValueComparatorGenerator implements Io {
 
     static final Set<Location> HEADER_FILE_NAMES = Stream.of(new String[] {
             "serde.hpp", //$NON-NLS-1$
+            "mpdecimal.hpp", //$NON-NLS-1$
     })
             .map(Location::of)
             .collect(Collectors.collectingAndThen(
@@ -94,15 +88,12 @@ public class NativeValueComparatorGenerator implements Io {
                     Collections::unmodifiableSet));
 
     static final Set<Location> SOURCE_FILE_NAMES = Stream.of(new String[] {
-            // empty files
+            "mpdecimal.cpp", //$NON-NLS-1$
     })
             .map(Location::of)
             .collect(Collectors.collectingAndThen(
                     Collectors.toSet(),
                     Collections::unmodifiableSet));
-
-    static final Location HEADER_PATH =
-            Location.of("com/asakusafw/dag/runtime/io/native/include/serde.hpp"); //$NON-NLS-1$
 
     private static final Pattern PATTERN_VARIABLE = Pattern.compile("\\$\\{(\\w+)\\}"); //$NON-NLS-1$
 
@@ -279,28 +270,6 @@ public class NativeValueComparatorGenerator implements Io {
             throw new IllegalStateException(MessageFormat.format(
                     "error occurred while copying file: {0} -> {1}",
                     src, dst), e);
-        }
-    }
-
-    /**
-     * Puts header file contents into the target writer.
-     * @param writer the target writer
-     * @deprecated Use {@link #copySourceFiles(ResourceContainer, Location)} and
-     *     {@link #copySourceFiles(ResourceContainer, Location)} instead
-     */
-    @Deprecated
-    public static void putHeader(PrintWriter writer) {
-        try (InputStream in = ValueOptionSerDe.class.getClassLoader().getResourceAsStream(HEADER_PATH.toPath())) {
-            Invariants.requireNonNull(in);
-            try (Scanner s = new Scanner(new InputStreamReader(in, ENCODE))) {
-                while (s.hasNextLine()) {
-                    writer.println(s.nextLine());
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException(MessageFormat.format(
-                    "error occurred while copying header file: {0}",
-                    HEADER_PATH), e);
         }
     }
 }

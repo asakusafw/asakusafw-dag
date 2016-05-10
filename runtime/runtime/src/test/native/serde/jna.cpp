@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 #include "serde.hpp"
+#include "mpdecimal.hpp"
 
 #include <iostream>
+#include <memory>
 #include <cassert>
 
-// for JNA
 extern "C" {
 using namespace asakusafw::serde;
 
@@ -59,4 +60,51 @@ DECL_JNA_COMPARE(date_time)
 DECL_JNA_COMPARE(string)
 DECL_JNA_COMPARE(decimal)
 
+#undef DECL_JNA_COMPARE
+
+} // extern
+
+extern "C" {
+
+using namespace asakusafw::math;
+
+static uint8_t *mpint_pack(const MpInt& v) {
+    std::vector<uint8_t> vec = v.data();
+    assert(vec.size() < 256);
+    uint8_t *results = (uint8_t *) malloc(vec.size() + 1);
+    results[0] = (uint8_t) vec.size();
+    std::memcpy(&results[1], vec.data(), vec.size());
+    return results;
+}
+
+uint8_t *jna_mpint(uint8_t *ptr, int64_t length) {
+    MpInt v(ptr, (size_t) length);
+    return mpint_pack(v);
+}
+
+uint8_t *jna_mpint_mult(uint8_t *ptr, int64_t length, uint32_t multiplier) {
+    MpInt v(ptr, (size_t) length);
+    return mpint_pack(v * multiplier);
+}
+
+uint8_t *jna_mpint_mult_mp(uint8_t *p0, int64_t l0, uint8_t *p1, int64_t l1) {
+    MpInt a(p0, (size_t) l0);
+    MpInt b(p1, (size_t) l1);
+    return mpint_pack(a * b);
+}
+
+int32_t jna_mpint_cmp(uint8_t *p0, int64_t l0, int64_t b) {
+    MpInt a(p0, (size_t) l0);
+    return static_cast<int32_t>(a.compare_to(b));
+}
+
+int32_t jna_mpint_cmp_mp(uint8_t *p0, int64_t l0, uint8_t *p1, int64_t l1) {
+    MpInt a(p0, (size_t) l0);
+    MpInt b(p1, (size_t) l1);
+    return static_cast<int32_t>(a.compare_to(b));
+}
+
+uint8_t *jna_mpint_pow_of_10(uint32_t exponent) {
+    return mpint_pack(MpInt::power_of_10(exponent));
+}
 } // extern
