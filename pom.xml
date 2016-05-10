@@ -56,7 +56,7 @@
     <junit.version>4.11</junit.version>
     <hamcrest.version>1.3</hamcrest.version>
     <ant.version>1.9.6</ant.version>
-    <checkstyle.version>6.16.1</checkstyle.version>
+    <checkstyle.version>6.17</checkstyle.version>
 
     <!-- Build settings -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
