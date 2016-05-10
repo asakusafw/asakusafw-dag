@@ -19,6 +19,5 @@
     <module>builtin</module>
     <module>internalio</module>
     <module>directio</module>
-    <module>trace</module>
   </modules>
 </project>
