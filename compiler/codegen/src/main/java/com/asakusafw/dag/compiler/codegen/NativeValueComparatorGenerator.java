@@ -88,6 +88,7 @@ public class NativeValueComparatorGenerator implements Io {
                     Collections::unmodifiableSet));
 
     static final Set<Location> SOURCE_FILE_NAMES = Stream.of(new String[] {
+            "serde.cpp", //$NON-NLS-1$
             "mpdecimal.cpp", //$NON-NLS-1$
     })
             .map(Location::of)
