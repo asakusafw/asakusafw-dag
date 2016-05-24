@@ -257,19 +257,6 @@ static Sign compare_value(T a, T b) {
     return a == b ? Sign::equal_to : a < b ? Sign::less_than : Sign::greater_than;
 }
 
-inline
-static Sign compare_memory(
-        const uint8_t *a_buf, std::size_t a_length,
-        const uint8_t *b_buf, std::size_t b_length) {
-    std::size_t length = std::min(a_length, b_length);
-    if (length != 0) {
-        int diff = memcmp(a_buf, b_buf, length);
-        RETURN_IF_DIFFERENT(compare_value(diff, 0));
-    }
-    RETURN_IF_DIFFERENT(compare_value(a_length, b_length));
-    return Sign::equal_to;
-}
-
 Sign MpInt::compare_to(uint64_t other) const {
     std::size_t words = m_members.size();
     if (words == 0) {
@@ -420,9 +407,6 @@ Sign MpDecimal::compare_to(const MpDecimal& other) const {
 Sign asakusafw::math::compare_decimal(
         const uint8_t *a_buf, std::size_t a_length, int32_t a_exponent,
         const uint8_t *b_buf, std::size_t b_length, int32_t b_exponent) {
-    if (a_exponent == b_exponent) {
-        return compare_memory(a_buf, a_length, b_buf, b_length);
-    }
     MpDecimal a(a_buf, a_length, a_exponent);
     MpDecimal b(b_buf, b_length, b_exponent);
     return a.compare_to(b);
