@@ -794,6 +794,8 @@ public class SerDeNativeTest {
 
         assertCompare("1" + sPad, 20, "9223372036854775807" + sPad, 0, +1);
         assertCompare("1" + sPad, 20, "9223372036854775807" + sPad, 2, -1);
+
+        assertCompare("0x1234_12345678_12345678", 0, "0x__34_12345678_12345678", 0, +1);
     }
 
     private void assertCompare(String s0, int e0, String s1, int e1, int sign) {
