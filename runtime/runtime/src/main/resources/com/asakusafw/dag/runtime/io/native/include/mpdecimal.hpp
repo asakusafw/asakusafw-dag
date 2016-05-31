@@ -65,7 +65,7 @@ class MpInt {
 public:
     /*
      * \brief The default constructor.
-     * The created object will just represents zero.
+     * The created object will just represent zero.
      */
     MpInt() = default;
 
@@ -168,8 +168,8 @@ public:
     inline
     bool operator==(uint64_t other) const {
         if (m_members.empty()) {
-            return other == 0ULL;
-        } else if (other == 0ULL) {
+            return other == UINT64_C(0);
+        } else if (other == UINT64_C(0)) {
             return false;
         } else if (m_members.size() == 1) {
             return m_members.front() == other;
@@ -246,13 +246,13 @@ private:
 
 /*
  * \brief A simple compact unsigned decimal.
- * This only can represent [0, 2^{64}).
+ * This only can have a significand in the range of [0, 2^{64}).
  */
 class CompactDecimal {
 public:
     /*
      * \brief The default constructor.
-     * The created object will just represents zero.
+     * The created object will just represent zero.
      */
     CompactDecimal() = default;
 
@@ -333,7 +333,7 @@ class MpDecimal {
 public:
     /*
      * \brief The default constructor.
-     * The created object will just represents zero.
+     * The created object will just represent zero.
      */
     MpDecimal() = default;
 
