@@ -168,8 +168,8 @@ public:
     inline
     bool operator==(uint64_t other) const {
         if (m_members.empty()) {
-            return other == UINT64_C(0ULL);
-        } else if (other == UINT64_C(0ULL)) {
+            return other == UINT64_C(0);
+        } else if (other == UINT64_C(0)) {
             return false;
         } else if (m_members.size() == 1) {
             return m_members.front() == other;
