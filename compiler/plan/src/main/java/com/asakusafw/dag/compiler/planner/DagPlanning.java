@@ -149,7 +149,7 @@ public final class DagPlanning {
             JobflowInfo jobflow,
             Collection<PlanningContext.Option> options) {
         PlanningContext context = new PlanningContext(
-                new OptimizerContextAdapter(parent, jobflow.getFlowId()),
+                new OptimizerContextAdapter(parent, jobflow.getFlowId(), DagOptimizerToolkit.INSTANCE),
                 options);
         return context;
     }

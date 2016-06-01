@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.asakusafw.lang.compiler.model.info.JobflowInfo;
 import com.asakusafw.lang.compiler.optimizer.OperatorCharacterizer;
 import com.asakusafw.lang.compiler.optimizer.OperatorEstimator;
 import com.asakusafw.lang.compiler.optimizer.OperatorRewriter;
@@ -30,6 +31,9 @@ import com.asakusafw.lang.compiler.planning.util.GraphStatistics;
 
 /**
  * Context object for execution planner.
+ * Please instantiate this class using
+ * {@link DagPlanning#createContext(com.asakusafw.lang.compiler.api.JobflowProcessor.Context, JobflowInfo, Collection)
+ * DagPlanning#createContext(...)} instead of directly invoke constructors of this class.
  */
 public class PlanningContext {
 
