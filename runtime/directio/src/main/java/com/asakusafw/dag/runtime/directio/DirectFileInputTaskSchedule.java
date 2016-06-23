@@ -34,6 +34,8 @@ import com.asakusafw.runtime.directio.ResourcePattern;
 
 /**
  * A {@link TaskSchedule} for Direct I/O file input.
+ * @since 0.1.0
+ * @version 0.1.2
  */
 public class DirectFileInputTaskSchedule implements TaskSchedule {
 
@@ -67,6 +69,26 @@ public class DirectFileInputTaskSchedule implements TaskSchedule {
         this.filterContext = filterContext;
         this.factory = factory;
         this.variables = variableResolver;
+    }
+
+    /**
+     * Returns a resolved input path pattern string.
+     * @param basePath the base path
+     * @param resourcePattern the resource pattern
+     * @return the resolved input path
+     * @throws IOException if I/O error was occurred while resolving path
+     * @throws InterruptedException if interrupted while resolving path
+     * @since 0.1.2
+     */
+    public String resolve(String basePath, String resourcePattern) throws IOException, InterruptedException {
+        Arguments.requireNonNull(basePath);
+        Arguments.requireNonNull(resourcePattern);
+        String resolvedBasePath = variables.apply(basePath);
+        ResourcePattern resolvedResourcePattern = FilePattern.compile(variables.apply(resourcePattern));
+        String containerPath = repository.getContainerPath(resolvedBasePath);
+        String componentPath = repository.getComponentPath(resolvedBasePath);
+        DirectDataSource source = repository.getRelatedDataSource(containerPath);
+        return source.path(componentPath, resolvedResourcePattern);
     }
 
     /**
