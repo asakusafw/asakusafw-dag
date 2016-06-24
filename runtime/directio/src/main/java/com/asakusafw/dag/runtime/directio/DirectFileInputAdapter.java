@@ -17,7 +17,6 @@ package com.asakusafw.dag.runtime.directio;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -97,30 +96,11 @@ public class DirectFileInputAdapter implements InputAdapter<ExtractOperation.Inp
             DirectFileCounterGroup counters = counterRoot.get(DirectFileCounterGroup.CATEGORY_INPUT, id);
             int count = s.addInput(basePath, resourcePattern, dataFormat, dataFilter, counters);
             if (count == 0 && optional == false) {
-                raiseFileNotFound(basePath, resourcePattern);
+                String path = s.resolve(basePath, resourcePattern);
+                throw new FileNotFoundException(path);
             }
         });
         return this;
-    }
-
-    private void raiseFileNotFound(String basePath, String resourcePattern) throws FileNotFoundException {
-        String rBasePath = basePath;
-        String rResourcePattern = resourcePattern;
-        try {
-            rBasePath = stage.resolveUserVariables(basePath);
-        } catch (IllegalArgumentException e) {
-            LOG.debug("failed to resolve base path: {}", basePath, e); //$NON-NLS-1$
-            rBasePath = basePath;
-        }
-        try {
-            rResourcePattern = stage.resolveUserVariables(resourcePattern);
-        } catch (IllegalArgumentException e) {
-            LOG.debug("failed to resolve resource pattern: {}", resourcePattern, e); //$NON-NLS-1$
-            rResourcePattern = resourcePattern;
-        }
-        throw new FileNotFoundException(MessageFormat.format(
-                "basePath=\"{0}\", resourcePattern=\"{1}\"", //$NON-NLS-1$
-                rBasePath, rResourcePattern));
     }
 
     @Override
