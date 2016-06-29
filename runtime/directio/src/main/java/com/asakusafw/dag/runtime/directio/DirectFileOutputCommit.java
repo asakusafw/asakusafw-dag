@@ -70,7 +70,6 @@ public class DirectFileOutputCommit extends CustomVertexProcessor {
         Arguments.requireNonNull(context);
         StageInfo stage = context.getResource(StageInfo.class).orElseThrow(AssertionError::new);
         Configuration conf = context.getResource(Configuration.class).orElseThrow(AssertionError::new);
-        createTransactionManager(stage, conf);
         transactionManager = createTransactionManager(stage, conf);
         List<CustomTaskInfo> actions = resolve(
                 HadoopDataSourceUtil.loadRepository(conf),
