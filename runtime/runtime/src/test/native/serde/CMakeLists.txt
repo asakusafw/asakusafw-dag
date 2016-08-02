@@ -9,3 +9,7 @@ include_directories("../../../main/resources/com/asakusafw/dag/runtime/io/native
 
 add_library(test-serde SHARED ${NATIVE} ${CORE})
 set_target_properties(test-serde PROPERTIES COMPILE_FLAGS "-std=c++11 -Wall")
+
+if (WIN32)
+    set_target_properties(test-serde PROPERTIES PREFIX "")
+endif(WIN32)

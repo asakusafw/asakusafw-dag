@@ -40,7 +40,6 @@ import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.asakusafw.dag.runtime.testing.ClosablePointer;
 import com.asakusafw.runtime.io.util.DataBuffer;
 import com.asakusafw.runtime.value.BooleanOption;
 import com.asakusafw.runtime.value.ByteOption;
@@ -846,5 +845,19 @@ public class SerDeNativeTest {
         int jna_mpint_cmp_mp(Pointer b0, long l0, Pointer b1, long l1);
 
         Pointer jna_mpint_pow_of_10(int exponent);
+
+        void jna_free(Pointer ptr);
+    }
+
+    private class ClosablePointer extends Pointer implements AutoCloseable {
+
+        ClosablePointer(Pointer pointer) {
+            super(Pointer.nativeValue(pointer));
+        }
+
+        @Override
+        public void close() {
+            MAPPER.jna_free(this);
+        }
     }
 }

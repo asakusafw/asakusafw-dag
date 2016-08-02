@@ -29,6 +29,7 @@ import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -50,11 +51,18 @@ import com.asakusafw.runtime.core.Result;
 import com.asakusafw.runtime.io.ModelInput;
 import com.asakusafw.runtime.stage.temporary.TemporaryStorage;
 import com.asakusafw.runtime.util.hadoop.ConfigurationProvider;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link InternalInputAdapterGenerator}.
  */
 public class InternalOutputAdapterGeneratorTest extends ClassGeneratorTestRoot {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * temporary folder.

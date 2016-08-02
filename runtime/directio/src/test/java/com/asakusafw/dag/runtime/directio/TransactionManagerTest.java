@@ -20,16 +20,24 @@ import static org.junit.Assert.*;
 
 import java.util.Collections;
 
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
 import com.asakusafw.lang.compiler.mapreduce.testing.mock.DirectIoContext;
 import com.asakusafw.runtime.directio.OutputTransactionContext;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link TransactionManager}.
  */
 public class TransactionManagerTest {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * Direct I/O testing context.

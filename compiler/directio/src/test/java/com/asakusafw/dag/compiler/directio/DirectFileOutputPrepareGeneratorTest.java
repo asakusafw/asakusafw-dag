@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -46,6 +47,7 @@ import com.asakusafw.lang.compiler.mapreduce.testing.mock.WritableModelInput;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.runtime.io.ModelInput;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link DirectFileOutputPrepareGenerator}.
@@ -53,6 +55,12 @@ import com.asakusafw.runtime.io.ModelInput;
 public class DirectFileOutputPrepareGeneratorTest extends ClassGeneratorTestRoot {
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * Direct I/O testing context.

@@ -536,6 +536,13 @@ encoding/<project>=UTF-8
         <scope>provided</scope>
       </dependency>
       <dependency>
+        <groupId>com.asakusafw</groupId>
+        <artifactId>asakusa-runtime</artifactId>
+        <version>${asakusafw.version}</version>
+        <classifier>tests</classifier>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>

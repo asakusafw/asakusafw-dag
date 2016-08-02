@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -34,11 +35,18 @@ import org.junit.rules.TemporaryFolder;
 import com.asakusafw.bridge.stage.StageInfo;
 import com.asakusafw.dag.api.processor.testing.VertexProcessorRunner;
 import com.asakusafw.runtime.io.ModelInput;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link InternalOutputPrepare}.
  */
 public class InternalOutputPrepareTest {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * temporary folder.

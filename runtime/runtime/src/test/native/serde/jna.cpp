@@ -77,6 +77,10 @@ static uint8_t *mpint_pack(const MpInt& v) {
     return results;
 }
 
+void jna_free(void *ptr) {
+    free(ptr);
+}
+
 uint8_t *jna_mpint(uint8_t *ptr, int64_t length) {
     MpInt v(ptr, (size_t) length);
     return mpint_pack(v);

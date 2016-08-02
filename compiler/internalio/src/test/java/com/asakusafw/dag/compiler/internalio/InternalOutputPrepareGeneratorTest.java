@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -43,11 +44,18 @@ import com.asakusafw.dag.runtime.internalio.LocalInternalInputTaskInfo;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.runtime.io.ModelInput;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link InternalOutputPrepareGenerator}.
  */
 public class InternalOutputPrepareGeneratorTest extends ClassGeneratorTestRoot {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * temporary folder.
