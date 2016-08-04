@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -47,6 +48,7 @@ import com.asakusafw.runtime.directio.DirectDataSourceRepository;
 import com.asakusafw.runtime.directio.OutputAttemptContext;
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil;
 import com.asakusafw.runtime.io.ModelOutput;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link DirectFileOutputCommitGenerator}.
@@ -54,6 +56,12 @@ import com.asakusafw.runtime.io.ModelOutput;
 public class DirectFileOutputCommitGeneratorTest extends ClassGeneratorTestRoot {
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * Direct I/O testing context.

@@ -74,7 +74,7 @@ static T get_uint(const uint8_t *bytes, std::size_t count) {
     assert(0 <= count);
     assert(count <= sizeof(T));
     T result = 0;
-    for (int i = 0; i < count; i++) {
+    for (std::size_t i = 0; i < count; i++) {
         result = result << 8 | bytes[i];
     }
     return result;

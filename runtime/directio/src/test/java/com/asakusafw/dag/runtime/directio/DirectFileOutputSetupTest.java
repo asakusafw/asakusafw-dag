@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -34,11 +35,18 @@ import com.asakusafw.dag.api.processor.testing.VertexProcessorRunner;
 import com.asakusafw.dag.utils.common.Action;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.mapreduce.testing.mock.DirectIoContext;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link DirectFileOutputSetup}.
  */
 public class DirectFileOutputSetupTest {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * Direct I/O testing context.

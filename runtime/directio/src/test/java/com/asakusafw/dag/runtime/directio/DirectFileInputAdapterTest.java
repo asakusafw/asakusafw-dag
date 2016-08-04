@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -43,11 +44,18 @@ import com.asakusafw.lang.compiler.mapreduce.testing.mock.MockData;
 import com.asakusafw.lang.compiler.mapreduce.testing.mock.MockDataFormat;
 import com.asakusafw.lang.compiler.mapreduce.testing.mock.WritableModelOutput;
 import com.asakusafw.runtime.io.ModelOutput;
+import com.asakusafw.runtime.windows.WindowsSupport;
 
 /**
  * Test for {@link DirectFileInputAdapter}.
  */
 public class DirectFileInputAdapterTest {
+
+    /**
+     * Support for Windows platform.
+     */
+    @ClassRule
+    public static final WindowsSupport WINDOWS_SUPPORT = new WindowsSupport();
 
     /**
      * Direct I/O testing context.
