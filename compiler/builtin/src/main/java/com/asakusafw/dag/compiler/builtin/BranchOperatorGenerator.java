@@ -22,6 +22,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.objectweb.asm.ClassWriter;
@@ -34,6 +35,7 @@ import com.asakusafw.dag.compiler.codegen.AsmUtil.FieldRef;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.LocalVarRef;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.ValueRef;
 import com.asakusafw.dag.compiler.model.ClassData;
+import com.asakusafw.dag.compiler.model.graph.VertexElement;
 import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.analyzer.util.BranchOperatorUtil;
@@ -57,9 +59,19 @@ public class BranchOperatorGenerator extends UserOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
+    protected NodeInfo generate(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
         checkPorts(operator, i -> i == 1, i -> i >= 1);
+        return new OperatorNodeInfo(
+                context.cache(CacheKey.of(operator), () -> generateClass(context, operator, namer.get())),
+                operator.getInputs().get(0).getDataType(),
+                getDependencies(context, operator));
+    }
 
+    private List<VertexElement> getDependencies(Context context, UserOperator operator) {
+        return getDefaultDependencies(context, operator);
+    }
+
+    private ClassData generateClass(Context context, UserOperator operator, ClassDescription target) {
         OperatorInput input = operator.getInputs().get(0);
         ClassWriter writer = newWriter(target, Object.class, Result.class);
         FieldRef impl = defineOperatorField(writer, operator, target);
@@ -78,10 +90,7 @@ public class BranchOperatorGenerator extends UserOperatorNodeGenerator {
                     inputVar,
                     map);
         });
-        return new OperatorNodeInfo(
-                new ClassData(target, writer::toByteArray),
-                input.getDataType(),
-                getDefaultDependencies(context, operator));
+        return new ClassData(target, writer::toByteArray);
     }
 
     static void branch(

@@ -19,6 +19,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -38,18 +39,46 @@ import com.asakusafw.runtime.core.Result;
 
 /**
  * Generates buffer operator classes.
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class BufferOperatorGenerator {
+public final class BufferOperatorGenerator {
 
     private static final ClassDescription RESULT_TYPE = Descriptions.classOf(Result.class);
 
+    private static final String CATEGORY = "buffer"; //$NON-NLS-1$
+
+    private BufferOperatorGenerator() {
+        return;
+    }
+
     /**
      * Generates buffer operator class.
+     * @param context the current context
      * @param successors the successors
-     * @param target the target class
      * @return the generated class
+     * @since 0.2.0
      */
-    public ClassData generate(List<VertexElement> successors, ClassDescription target) {
+    public static ClassDescription get(ClassGeneratorContext context, List<? extends VertexElement> successors) {
+        return context.addClassFile(generate(context, successors));
+    }
+
+    /**
+     * Generates buffer operator class.
+     * @param context the current context
+     * @param successors the successors
+     * @return the generated class data
+     * @since 0.2.0
+     */
+    public static ClassData generate(ClassGeneratorContext context, List<? extends VertexElement> successors) {
+        TypeDescription type = getDataType(successors);
+        return context.cache(new Key(type, successors.size()), () -> {
+            String hint = Util.getSimpleNameHint(type, "Buffer"); //$NON-NLS-1$
+            return generate0(successors, context.getClassName(CATEGORY, hint));
+        });
+    }
+
+    private static ClassData generate0(List<? extends VertexElement> successors, ClassDescription target) {
         Arguments.require(successors.size() >= 2);
         TypeDescription dataType = getDataType(successors);
         ClassWriter writer = newWriter(target, Object.class, Result.class);
@@ -83,7 +112,7 @@ public class BufferOperatorGenerator {
         return new ClassData(target, writer::toByteArray);
     }
 
-    private TypeDescription getDataType(List<VertexElement> successors) {
+    private static TypeDescription getDataType(List<? extends VertexElement> successors) {
         TypeDescription dataType = null;
         for (VertexElement element : successors) {
             Arguments.require(element instanceof DataNode);
@@ -97,5 +126,52 @@ public class BufferOperatorGenerator {
             Arguments.require(erasure.equals(RESULT_TYPE));
         }
         return dataType;
+    }
+
+    private static class Key {
+
+        private final TypeDescription type;
+
+        private final int count;
+
+        Key(TypeDescription type, int count) {
+            this.type = type;
+            this.count = count;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hashCode(type);
+            result = prime * result + count;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Key other = (Key) obj;
+            if (!Objects.equals(type, other.type)) {
+                return false;
+            }
+            if (count != other.count) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Buffer(%s*%,d)", type, count); //$NON-NLS-1$
+        }
     }
 }

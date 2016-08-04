@@ -56,13 +56,8 @@ public class EdgeDataTableAdapterGenerator {
             LocalVarRef self = new LocalVarRef(Opcodes.ALOAD, 0);
             int index = 0;
             for (Spec spec : specs) {
-                ClassDescription keyBuilder = generateKeyBuilder(
-                        context, spec,
-                        qualify(target, "k", index));
-                ClassDescription copier = generateCopier(
-                        context, spec,
-                        qualify(target, "c", index));
-
+                ClassDescription keyBuilder = generateKeyBuilder(context, spec, qualify(target, "k", index));
+                ClassDescription copier = ObjectCopierGenerator.get(context, spec.dataType);
                 self.load(v);
                 getConst(v, spec.tableId);
                 getConst(v, spec.inputId);
@@ -126,8 +121,7 @@ public class EdgeDataTableAdapterGenerator {
     }
 
     static ClassDescription generateCopier(ClassGeneratorContext context, Spec spec, ClassDescription target) {
-        ClassData data = new ObjectCopierGenerator().generate(spec.dataType, target);
-        return context.addClassFile(data);
+        return ObjectCopierGenerator.get(context, spec.dataType);
     }
 
     private ClassDescription qualify(ClassDescription base, String category, int index) {

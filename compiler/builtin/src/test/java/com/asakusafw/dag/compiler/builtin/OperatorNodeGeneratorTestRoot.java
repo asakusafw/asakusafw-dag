@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
@@ -64,7 +63,7 @@ public abstract class OperatorNodeGeneratorTestRoot extends ClassGeneratorTestRo
      * @param callback the callback
      * @return the context
      */
-    public OperatorNodeGenerator.Context context(Consumer<Map<OperatorProperty, VertexElement>> callback) {
+    public OperatorNodeGenerator.Context prepare(Consumer<Map<OperatorProperty, VertexElement>> callback) {
         Mock mock = new Mock(context());
         callback.accept(mock.dependencies);
         return mock;
@@ -76,7 +75,7 @@ public abstract class OperatorNodeGeneratorTestRoot extends ClassGeneratorTestRo
      * @return the result
      */
     public NodeInfo generate(Operator operator) {
-        return generate(operator, context(m -> operator.getOutputs().forEach(o -> m.put(o, result(o.getDataType())))));
+        return generate(operator, prepare(m -> operator.getOutputs().forEach(o -> m.put(o, result(o.getDataType())))));
     }
 
     /**
@@ -86,7 +85,7 @@ public abstract class OperatorNodeGeneratorTestRoot extends ClassGeneratorTestRo
      * @return the result
      */
     public NodeInfo generate(Operator operator, Consumer<Map<OperatorProperty, VertexElement>> callback) {
-        return generate(operator, context(callback));
+        return generate(operator, prepare(callback));
     }
 
     /**
@@ -97,13 +96,9 @@ public abstract class OperatorNodeGeneratorTestRoot extends ClassGeneratorTestRo
      */
     public NodeInfo generate(Operator operator, OperatorNodeGenerator.Context context) {
         CompositeOperatorNodeGenerator generator = CompositeOperatorNodeGenerator.load(context.getClassLoader());
-        AtomicReference<NodeInfo> result = new AtomicReference<>();
-        add(c -> {
-            NodeInfo info = generator.generate(context, operator, c);
-            result.set(info);
-            return info.getClassData();
-        });
-        return Invariants.requireNonNull(result.get(), () -> operator);
+        NodeInfo info = generator.generate(context, operator);
+        context.addClassFile(info.getClassData());
+        return Invariants.requireNonNull(info, () -> operator);
     }
 
     /**

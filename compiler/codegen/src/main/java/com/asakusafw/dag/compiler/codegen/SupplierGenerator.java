@@ -17,6 +17,7 @@ package com.asakusafw.dag.compiler.codegen;
 
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
@@ -24,51 +25,101 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import com.asakusafw.dag.compiler.model.ClassData;
-import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
+import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
  * Generates {@link Supplier} class.
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class SupplierGenerator {
+public final class SupplierGenerator {
+
+    private static final String CATEGORY = "util"; //$NON-NLS-1$
+
+    private SupplierGenerator() {
+        return;
+    }
 
     /**
      * Generates {@link Supplier} class.
-     * @param source the supplying type
-     * @param target the generating class name
-     * @return the generated class data
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class
+     * @since 0.2.0
      */
-    public ClassData generate(ClassDescription source, ClassDescription target) {
+    public static ClassDescription get(ClassGeneratorContext context, TypeDescription type) {
+        return context.addClassFile(generate(context, type));
+    }
+
+    /**
+     * Generates {@link Supplier} class.
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class data
+     * @since 0.2.0
+     */
+    public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
+        return context.cache(new Key(type), () -> {
+            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "Supplier")); //$NON-NLS-1$
+            return generate0(type, target);
+        });
+    }
+
+    private static ClassData generate0(TypeDescription source, ClassDescription target) {
         ClassWriter writer = newWriter(target, Object.class, Supplier.class);
         defineEmptyConstructor(writer, Object.class);
-        Lang.let(writer.visitMethod(
-                Opcodes.ACC_PUBLIC,
-                "get",
-                Type.getMethodDescriptor(typeOf(Object.class)),
-                null,
-                new String[0]), v -> {
-                    v.visitVarInsn(Opcodes.ALOAD, 0);
-                    v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
-                            target.getInternalName(),
-                            "get",
-                            Type.getMethodDescriptor(typeOf(source)),
-                            false);
-                    v.visitInsn(Opcodes.ARETURN);
-                    v.visitMaxs(0, 0);
-                    v.visitEnd();
-                });
-        Lang.let(writer.visitMethod(
-                Opcodes.ACC_PUBLIC,
-                "get",
-                Type.getMethodDescriptor(typeOf(source)),
-                null,
-                new String[0]), v -> {
-                    getNew(v, source);
-                    v.visitInsn(Opcodes.ARETURN);
-                    v.visitMaxs(0, 0);
-                    v.visitEnd();
-                });
+        defineGetter(writer, typeOf(Object.class), "get", v -> {
+            v.visitVarInsn(Opcodes.ALOAD, 0);
+            v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                    target.getInternalName(),
+                    "get",
+                    Type.getMethodDescriptor(typeOf(source)),
+                    false);
+            v.visitInsn(Opcodes.ARETURN);
+        });
+        defineGetter(writer, typeOf(source), "get", v -> {
+            getNew(v, source);
+            v.visitInsn(Opcodes.ARETURN);
+        });
         writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
+    }
+
+    private static class Key {
+
+        private final TypeDescription type;
+
+        Key(TypeDescription type) {
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hashCode(type);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Key other = (Key) obj;
+            return Objects.equals(type, other.type);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Supplier(%s)", type); //$NON-NLS-1$
+        }
     }
 }

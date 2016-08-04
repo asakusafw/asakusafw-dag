@@ -34,6 +34,8 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator;
  */
 public class CompositeOperatorNodeGenerator {
 
+    private static final String CATEGORY_NAME = "operator";
+
     private final Map<ClassDescription, OperatorNodeGenerator> elements;
 
     /**
@@ -63,10 +65,9 @@ public class CompositeOperatorNodeGenerator {
      * Generates a class for processing the operator, and returns the generated class binary.
      * @param context the current context
      * @param operator the target operator
-     * @param targetClass the target class
      * @return the generated node info
      */
-    public NodeInfo generate(Context context, Operator operator, ClassDescription targetClass) {
+    public NodeInfo generate(Context context, Operator operator) {
         ClassDescription annotation;
         if (operator.getOperatorKind() == OperatorKind.CORE) {
             annotation = ((CoreOperator) operator).getCoreOperatorKind().getAnnotationType();
@@ -81,7 +82,9 @@ public class CompositeOperatorNodeGenerator {
                     "unsupported operator type: {0}",
                     annotation.getClassName()));
         }
-        return element.generate(context, operator, targetClass);
+        return element.generate(
+                context,
+                operator,
+                () -> context.getClassName(CATEGORY_NAME, annotation.getSimpleName()));
     }
-
 }

@@ -57,6 +57,67 @@ public class BranchOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         assertThat(c.get(MockValueModel::getValue), contains("C"));
     }
 
+    /**
+     * w/ arguments.
+     */
+    @Test
+    public void parameterized() {
+        UserOperator operator = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("?"))
+                .build();
+        NodeInfo info = generate(operator);
+        MockSink<MockValueModel> a = new MockSink<>();
+        MockSink<MockValueModel> b = new MockSink<>();
+        MockSink<MockValueModel> c = new MockSink<>();
+        loading(info, ctor -> {
+            Result<Object> r = ctor.newInstance(a, b, c, "B");
+            r.add(new MockValueModel("A"));
+            r.add(new MockValueModel("C"));
+        });
+        assertThat(a.get(MockValueModel::getValue), hasSize(0));
+        assertThat(b.get(MockValueModel::getValue), contains("A", "C"));
+        assertThat(c.get(MockValueModel::getValue), hasSize(0));
+    }
+
+    /**
+     * cache - simple case.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
     private Builder load(String name) {
         ReifiableTypeDescription type = Descriptions.typeOf(MockValueModel.class);
         Builder builder = OperatorExtractor.extract(Branch.class, Op.class, name)
@@ -73,6 +134,16 @@ public class BranchOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         @Branch
         public Switch simple(MockValueModel m) {
             return Switch.valueOf(m.getValue());
+        }
+
+        @Branch
+        public Switch renamed(MockValueModel m) {
+            return simple(m);
+        }
+
+        @Branch
+        public Switch parameterized(MockValueModel m, String arg) {
+            return Switch.valueOf(arg);
         }
     }
 

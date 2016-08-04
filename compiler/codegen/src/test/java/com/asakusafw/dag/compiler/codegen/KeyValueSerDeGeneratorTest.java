@@ -15,22 +15,20 @@
  */
 package com.asakusafw.dag.compiler.codegen;
 
+import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 
 import org.junit.Test;
 
 import com.asakusafw.dag.api.common.KeyValueSerDe;
+import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
-import com.asakusafw.lang.compiler.api.reference.DataModelReference;
-import com.asakusafw.lang.compiler.api.testing.MockDataModelLoader;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
-import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.lang.compiler.model.graph.Group;
-import com.asakusafw.lang.compiler.model.graph.Groups;
 import com.asakusafw.runtime.io.util.DataBuffer;
 
 /**
@@ -39,17 +37,13 @@ import com.asakusafw.runtime.io.util.DataBuffer;
 @SuppressWarnings("deprecation")
 public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
 
-    private final MockDataModelLoader loader = new MockDataModelLoader(getClass().getClassLoader());
-
     /**
      * simple case.
      */
     @Test
     public void simple() {
-        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
-        Group group = Groups.parse(Arrays.asList("key"), Arrays.asList("+sort"));
-        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
-        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        Group group = group("=key", "+sort");
+        ClassDescription gen = KeyValueSerDeGenerator.get(context(), classOf(MockDataModel.class), group);
         loading(cl -> {
             KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
 
@@ -81,10 +75,8 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void full() {
-        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
-        Group group = Groups.parse(Arrays.asList("key"), Arrays.asList("+sort", "-value"));
-        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
-        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        Group group = group("=key", "+sort", "-value");
+        ClassDescription gen = KeyValueSerDeGenerator.get(context(), classOf(MockDataModel.class), group);
         loading(cl -> {
             KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
 
@@ -116,10 +108,7 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void empty_keys() {
-        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
-        Group group = Groups.parse(Arrays.asList());
-        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
-        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        ClassDescription gen = KeyValueSerDeGenerator.get(context(), classOf(MockDataModel.class), group());
         loading(cl -> {
             KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
 
@@ -151,10 +140,8 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void empty_values() {
-        KeyValueSerDeGenerator generator = new KeyValueSerDeGenerator();
-        Group group = Groups.parse(Arrays.asList("key", "sort", "value"));
-        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
-        ClassDescription gen = add(c -> generator.generate(ref, group, c));
+        Group group = group("=key", "=sort", "=value");
+        ClassDescription gen = KeyValueSerDeGenerator.get(context(), classOf(MockDataModel.class), group);
         loading(cl -> {
             KeyValueSerDe object = (KeyValueSerDe) gen.resolve(cl).newInstance();
 
@@ -179,5 +166,35 @@ public class KeyValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
             assertThat(copy.getSortOption(), is(model.getSortOption()));
             assertThat(copy.getValueOption(), is(model.getValueOption()));
         });
+    }
+
+    /**
+     * cache - equivalent.
+     */
+    @Test
+    public void cache() {
+        ClassData a = KeyValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class), group("=key"));
+        ClassData b = KeyValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class), group("=key"));
+        assertThat(b, is(cacheOf(a)));
+    }
+
+    /**
+     * cache w/ different types.
+     */
+    @Test
+    public void cache_diff_type() {
+        ClassData a = KeyValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class), group("=key"));
+        ClassData b = KeyValueSerDeGenerator.generate(context(), typeOf(MockKeyValueModel.class), group("=key"));
+        assertThat(b, is(not(cacheOf(a))));
+    }
+
+    /**
+     * cache w/ different groupings.
+     */
+    @Test
+    public void cache_diff_group() {
+        ClassData a = KeyValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class), group("=key", "+sort"));
+        ClassData b = KeyValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class), group("=key", "-sort"));
+        assertThat(b, is(not(cacheOf(a))));
     }
 }

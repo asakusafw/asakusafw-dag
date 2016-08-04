@@ -24,6 +24,8 @@ import org.junit.Test;
 
 import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.NodeInfo;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
+import com.asakusafw.dag.runtime.testing.MockKeyModel;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.dag.runtime.testing.MockValueModel;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
@@ -54,5 +56,43 @@ public class ProjectOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         });
         List<String> r = Lang.project(results.getResults(), m -> m.getValue());
         assertThat(r, contains("Hello, world!"));
+    }
+
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        CoreOperator opA = CoreOperator.builder(CoreOperatorKind.PROJECT)
+                .input("in", Descriptions.typeOf(MockDataModel.class))
+                .output("out", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opA);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different I/O types.
+     */
+    @Test
+    public void cache_diff_type() {
+        CoreOperator opA = CoreOperator.builder(CoreOperatorKind.PROJECT)
+                .input("in", Descriptions.typeOf(MockDataModel.class))
+                .output("out", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        CoreOperator opB = CoreOperator.builder(CoreOperatorKind.PROJECT)
+                .input("in", Descriptions.typeOf(MockKeyValueModel.class))
+                .output("out", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        CoreOperator opC = CoreOperator.builder(CoreOperatorKind.PROJECT)
+                .input("in", Descriptions.typeOf(MockDataModel.class))
+                .output("out", Descriptions.typeOf(MockKeyModel.class))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        NodeInfo c = generate(opC);
+        assertThat(b, not(useCacheOf(a)));
+        assertThat(c, not(useCacheOf(a)));
     }
 }

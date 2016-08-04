@@ -96,6 +96,53 @@ public class ExtractOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         assertThat(Lang.project(results.getResults(), e -> e.getValue()), contains("Hello?"));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple")
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple")
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        UserOperator opB = load("renamed")
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(Extract.class, Op.class, name)
                 .input("in", Descriptions.typeOf(MockDataModel.class));
@@ -107,6 +154,11 @@ public class ExtractOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         @Extract
         public void simple(MockDataModel m, Result<MockValueModel> r0) {
             parameterized(m, r0, "!");
+        }
+
+        @Extract
+        public void renamed(MockDataModel m, Result<MockValueModel> r0) {
+            simple(m, r0);
         }
 
         @Extract

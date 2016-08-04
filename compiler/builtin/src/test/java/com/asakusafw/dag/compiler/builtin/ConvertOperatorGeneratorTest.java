@@ -71,6 +71,45 @@ public class ConvertOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         assertThat(Lang.project(results.getResults(), e -> e.getValue()), contains("Hello?"));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(Convert.class, Op.class, name)
                 .input("in", Descriptions.typeOf(MockDataModel.class))
@@ -84,6 +123,11 @@ public class ConvertOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         @Convert
         public MockValueModel simple(MockDataModel m) {
             return parameterized(m, "!");
+        }
+
+        @Convert
+        public MockValueModel renamed(MockDataModel m) {
+            return simple(m);
         }
 
         @Convert

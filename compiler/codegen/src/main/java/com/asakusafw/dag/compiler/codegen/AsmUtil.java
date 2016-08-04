@@ -49,7 +49,7 @@ import com.asakusafw.runtime.value.ValueOption;
 /**
  * Utilities for ASM.
  * @since 0.1.0
- * @version 0.1.1
+ * @version 0.2.0
  */
 public final class AsmUtil {
 
@@ -276,6 +276,26 @@ public final class AsmUtil {
                 false);
         body.accept(method);
         method.visitInsn(Opcodes.RETURN);
+        method.visitMaxs(0, 0);
+        method.visitEnd();
+    }
+
+    /**
+     * Adds a getter-like method.
+     * @param writer the target class
+     * @param type the method result type
+     * @param name the method name
+     * @param body the method body
+     * @since 0.2.0
+     */
+    public static void defineGetter(ClassWriter writer, Type type, String name, Consumer<MethodVisitor> body) {
+        MethodVisitor method = writer.visitMethod(
+                Opcodes.ACC_PUBLIC,
+                name,
+                Type.getMethodDescriptor(type),
+                null,
+                new String[0]);
+        body.accept(method);
         method.visitMaxs(0, 0);
         method.visitEnd();
     }

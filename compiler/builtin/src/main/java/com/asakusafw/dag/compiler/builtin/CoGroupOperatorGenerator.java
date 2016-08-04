@@ -22,12 +22,14 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 
 import com.asakusafw.dag.compiler.codegen.AsmUtil.FieldRef;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.ValueRef;
 import com.asakusafw.dag.compiler.model.ClassData;
+import com.asakusafw.dag.compiler.model.graph.VertexElement;
 import com.asakusafw.dag.runtime.adapter.CoGroupOperation;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
@@ -48,14 +50,25 @@ public class CoGroupOperatorGenerator extends UserOperatorNodeGenerator {
         return CoGroup.class;
     }
 
+
     @Override
-    protected NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
-        return gen(context, operator, target);
+    protected NodeInfo generate(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
+        return gen(context, operator, namer);
     }
 
-    static NodeInfo gen(Context context, UserOperator operator, ClassDescription target) {
+    static NodeInfo gen(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
         checkPorts(operator, i -> i >= 1, i -> i >= 1);
+        return new OperatorNodeInfo(
+                context.cache(CacheKey.of(operator), () -> generateClass(context, operator, namer.get())),
+                Descriptions.typeOf(CoGroupOperation.Input.class),
+                getDependencies(context, operator));
+    }
 
+    private static List<VertexElement> getDependencies(Context context, UserOperator operator) {
+        return getDefaultDependencies(context, operator);
+    }
+
+    private static ClassData generateClass(Context context, UserOperator operator, ClassDescription target) {
         ClassWriter writer = newWriter(target, Object.class, Result.class);
         FieldRef impl = defineOperatorField(writer, operator, target);
         Map<OperatorProperty, FieldRef> map = defineConstructor(context, operator, target, writer, method -> {
@@ -72,9 +85,6 @@ public class CoGroupOperatorGenerator extends UserOperatorNodeGenerator {
             arguments.addAll(Lang.project(operator.getArguments(), e -> map.get(e)));
             invoke(method, context, operator, arguments);
         });
-        return new OperatorNodeInfo(
-                new ClassData(target, writer::toByteArray),
-                Descriptions.typeOf(CoGroupOperation.Input.class),
-                getDefaultDependencies(context, operator));
+        return new ClassData(target, writer::toByteArray);
     }
 }

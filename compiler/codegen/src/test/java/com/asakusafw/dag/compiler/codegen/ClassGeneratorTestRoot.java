@@ -15,24 +15,29 @@
  */
 package com.asakusafw.dag.compiler.codegen;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
 import com.asakusafw.dag.api.processor.VertexProcessorContext;
+import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.NodeInfo;
 import com.asakusafw.dag.compiler.codegen.testing.MockClassGeneratorContext;
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.utils.common.Action;
 import com.asakusafw.lang.compiler.common.BasicResourceContainer;
 import com.asakusafw.lang.compiler.common.ResourceContainer;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
+import com.asakusafw.lang.compiler.model.graph.Group;
+import com.asakusafw.lang.compiler.model.graph.Groups;
 
 /**
  * Test root for class generators.
@@ -49,14 +54,17 @@ public abstract class ClassGeneratorTestRoot {
     @Rule
     public final TemporaryFolder classpath = new TemporaryFolder();
 
+    private ClassGeneratorContext session;
+
     /**
-     * Returns a new class generator context.
+     * Returns a class generator context.
      * @return the new context
      */
-    public ClassGeneratorContext context() {
-        return new MockClassGeneratorContext(
+    public final ClassGeneratorContext context() {
+        session = session != null ? session : new MockClassGeneratorContext(
                 getClass().getClassLoader(),
                 classpath());
+        return session;
     }
 
     /**
@@ -83,19 +91,21 @@ public abstract class ClassGeneratorTestRoot {
      * @return the target class
      */
     public ClassDescription add(ClassDescription target, Generating callback) {
-        String path = target.getInternalName() + ".class";
-        File file = new File(classpath.getRoot(), path);
-        file.getParentFile().mkdirs();
-        if (file.exists()) {
-            throw new IllegalStateException(path);
-        }
-        try (OutputStream output = new FileOutputStream(file)) {
-            ClassData data = callback.perform(target);
-            data.dump(output);
+        try {
+            return add(callback.perform(target));
         } catch (IOException e) {
             throw new AssertionError(e);
         }
-        return target;
+    }
+
+    /**
+     * Adds a temporary class into the current classpath.
+     * @param data the class data
+     * @return the target class
+     */
+    public ClassDescription add(ClassData data) {
+        data.dump(new BasicResourceContainer(classpath.getRoot()));
+        return data.getDescription();
     }
 
     /**
@@ -136,6 +146,76 @@ public abstract class ClassGeneratorTestRoot {
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
+    }
+
+    /**
+     * Parses a group elements.
+     * @param expressions each element starts with one of {@code '=', '+', '-'}
+     * @return the group
+     */
+    public static Group group(String... expressions) {
+        List<String> group = new ArrayList<>();
+        List<String> order = new ArrayList<>();
+        for (String s : expressions) {
+            char operator = s.charAt(0);
+            switch (operator) {
+            case '=':
+                group.add(s.substring(1));
+                break;
+            case '+':
+            case '-':
+                order.add(s);
+                break;
+            default:
+                group.add(s);
+                break;
+            }
+        }
+        return Groups.parse(group, order);
+    }
+
+    /**
+     * Returns a matcher which checks whether the target is a cache of the original class data.
+     * @param origin the original node
+     * @return the matcher
+     */
+    public static Matcher<ClassData> cacheOf(ClassData origin) {
+        return new BaseMatcher<ClassData>() {
+            @Override
+            public boolean matches(Object item) {
+                ClassData a = (ClassData) item;
+                ClassData b = origin;
+                return a.hasContents() == false
+                        && b.hasContents()
+                        && a.getDescription().equals(b.getDescription());
+            }
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("cache of ").appendValue(origin);
+            }
+        };
+    }
+
+    /**
+     * Returns a matcher which checks whether the target node uses a cache of the original node.
+     * @param origin the original node
+     * @return the matcher
+     */
+    public static Matcher<NodeInfo> useCacheOf(NodeInfo origin) {
+        return new BaseMatcher<NodeInfo>() {
+            @Override
+            public boolean matches(Object item) {
+                ClassData a = ((NodeInfo) item).getClassData();
+                ClassData b = origin.getClassData();
+                return a.hasContents() == false
+                        && b.hasContents()
+                        && a.getDescription().equals(b.getDescription());
+            }
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("using cache of ").appendValue(origin.getClassData());
+            }
+        };
     }
 
     /**

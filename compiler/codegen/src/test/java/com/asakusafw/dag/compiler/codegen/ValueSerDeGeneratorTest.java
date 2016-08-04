@@ -15,6 +15,7 @@
  */
 package com.asakusafw.dag.compiler.codegen;
 
+import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
@@ -23,11 +24,10 @@ import java.math.BigDecimal;
 import org.junit.Test;
 
 import com.asakusafw.dag.api.common.ValueSerDe;
+import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
-import com.asakusafw.lang.compiler.api.reference.DataModelReference;
-import com.asakusafw.lang.compiler.api.testing.MockDataModelLoader;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
-import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.runtime.io.util.DataBuffer;
 
 /**
@@ -36,16 +36,12 @@ import com.asakusafw.runtime.io.util.DataBuffer;
 @SuppressWarnings("deprecation")
 public class ValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
 
-    private final MockDataModelLoader loader = new MockDataModelLoader(getClass().getClassLoader());
-
     /**
      * simple case.
      */
     @Test
     public void simple() {
-        ValueSerDeGenerator generator = new ValueSerDeGenerator();
-        DataModelReference ref = loader.load(Descriptions.classOf(MockDataModel.class));
-        ClassDescription gen = add(c -> generator.generate(ref, c));
+        ClassDescription gen = ValueSerDeGenerator.get(context(), classOf(MockDataModel.class));
         loading(cl -> {
             ValueSerDe object = (ValueSerDe) gen.resolve(cl).newInstance();
 
@@ -64,5 +60,25 @@ public class ValueSerDeGeneratorTest extends ClassGeneratorTestRoot {
             assertThat(copy.getSortOption(), is(model.getSortOption()));
             assertThat(copy.getValueOption(), is(model.getValueOption()));
         });
+    }
+
+    /**
+     * cache - equivalent.
+     */
+    @Test
+    public void cache() {
+        ClassData a = ValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = ValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class));
+        assertThat(b, is(cacheOf(a)));
+    }
+
+    /**
+     * cache w/ different types.
+     */
+    @Test
+    public void cache_diff_type() {
+        ClassData a = ValueSerDeGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = ValueSerDeGenerator.generate(context(), typeOf(MockKeyValueModel.class));
+        assertThat(b, is(not(cacheOf(a))));
     }
 }

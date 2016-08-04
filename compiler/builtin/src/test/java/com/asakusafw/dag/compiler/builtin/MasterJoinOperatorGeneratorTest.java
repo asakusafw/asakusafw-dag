@@ -195,13 +195,46 @@ public class MasterJoinOperatorGeneratorTest extends OperatorNodeGeneratorTestRo
         assertThat(m.get(), hasSize(0));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different strategy.
+     */
+    @Test
+    public void cache_diff_strategy() {
+        UserOperator opA = load("simple").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generateWithTable(opA);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
     private NodeInfo generateWithTable(UserOperator operator) {
         NodeInfo info = generate(operator, c -> {
             c.put(operator.findInput("mst"), new DataTableNode("mst",
                     Descriptions.typeOf(DataTable.class),
                     Descriptions.typeOf(MockKeyValueModel.class)));
-            c.put(operator.findOutput("jo"), result(Descriptions.typeOf(MockJoined.class)));
-            c.put(operator.findOutput("mi"), result(Descriptions.typeOf(MockDataModel.class)));
+            operator.getOutputs().forEach(o -> c.put(o, result(o.getDataType())));
         });
         return info;
     }
@@ -225,6 +258,11 @@ public class MasterJoinOperatorGeneratorTest extends OperatorNodeGeneratorTestRo
         @MasterJoin
         public MockJoined simple(MockKeyValueModel m, MockDataModel t) {
             throw new AssertionError();
+        }
+
+        @MasterJoin
+        public MockJoined renamed(MockKeyValueModel m, MockDataModel t) {
+            return simple(m, t);
         }
 
         @MasterJoin(selection = "selector")

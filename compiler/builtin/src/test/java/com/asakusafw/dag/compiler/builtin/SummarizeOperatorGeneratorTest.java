@@ -118,6 +118,29 @@ public class SummarizeOperatorGeneratorTest extends OperatorNodeGeneratorTestRoo
         assertThat(results.get(e -> e.getSumOption().get()), contains(new BigDecimal("60")));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(Summarize.class, Op.class, name)
                 .input("in", Descriptions.typeOf(MockDataModel.class), Groups.parse(Arrays.asList("key")))
@@ -130,6 +153,11 @@ public class SummarizeOperatorGeneratorTest extends OperatorNodeGeneratorTestRoo
         @Summarize
         public MockSummarized simple(MockDataModel in) {
             throw new AssertionError();
+        }
+
+        @Summarize
+        public MockSummarized renamed(MockDataModel in) {
+            return simple(in);
         }
     }
 

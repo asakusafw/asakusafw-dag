@@ -74,4 +74,10 @@ public class DataTableNode implements DataNode {
     public List<? extends VertexElement> getDependencies() {
         return Collections.emptyList();
     }
+    @Override
+    public String toString() {
+        return String.format("Table:%s@%s", //$NON-NLS-1$
+                getDataType(),
+                getId());
+    }
 }

@@ -15,23 +15,23 @@
  */
 package com.asakusafw.dag.compiler.codegen;
 
-import java.util.function.Supplier;
+import java.util.Optional;
 
-import com.asakusafw.lang.compiler.common.DiagnosticException;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
-/**
- * {@link Supplier} class provider.
- */
-@FunctionalInterface
-public interface SupplierProvider {
+final class Util {
 
-    /**
-     * Returns the supplier class for the target type.
-     * @param target the target type
-     * @return the corresponded class description
-     * @throws DiagnosticException if error occurred while preparing the provider
-     */
-    ClassDescription getSupplier(TypeDescription target);
+    private Util() {
+        return;
+    }
+
+    static String getSimpleNameHint(TypeDescription type, String suffix) {
+        return Optional.of(type)
+                .filter(ClassDescription.class::isInstance)
+                .map(ClassDescription.class::cast)
+                .map(ClassDescription::getSimpleName)
+                .map(s -> s + suffix)
+                .orElse(null);
+    }
 }

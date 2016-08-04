@@ -18,6 +18,7 @@ package com.asakusafw.dag.compiler.codegen;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.compiler.model.graph.VertexElement;
@@ -36,6 +37,8 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator;
 /**
  * Generates classes for processing Asakusa operators.
  * This can handles only {@link CoreOperator} and {@link UserOperator}.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public interface OperatorNodeGenerator {
 
@@ -49,10 +52,10 @@ public interface OperatorNodeGenerator {
      * Generates a class for processing the operator, and returns the generated class binary.
      * @param context the current context
      * @param operator the target operator
-     * @param targetClass the target class
+     * @param classNamer the target class namer
      * @return the generated node info
      */
-    NodeInfo generate(Context context, Operator operator, ClassDescription targetClass);
+    NodeInfo generate(Context context, Operator operator, Supplier<? extends ClassDescription> classNamer);
 
     /**
      * Represents a processing context of {@link OperatorNodeGenerator}.
@@ -197,6 +200,14 @@ public interface OperatorNodeGenerator {
         public List<VertexElement> getDependencies() {
             return dependencies;
         }
+
+        @Override
+        public String toString() {
+            return String.format("Operator:%s(%s)->(%s)", //$NON-NLS-1$
+                    getClassData(),
+                    getDataType(),
+                    getDependencies());
+        }
     }
 
     /**
@@ -303,6 +314,14 @@ public interface OperatorNodeGenerator {
         @Override
         public List<VertexElement> getDependencies() {
             return dependencies;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Aggregate:%s(%s)->(%s)", //$NON-NLS-1$
+                    getClassData(),
+                    getDataType(),
+                    getDependencies());
         }
     }
 }

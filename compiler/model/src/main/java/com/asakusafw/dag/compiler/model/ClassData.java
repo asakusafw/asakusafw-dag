@@ -77,11 +77,12 @@ public class ClassData {
     }
 
     /**
-     * Returns whether the target is a provided class or not.
-     * @return {@code true} if the target is a provided class, otherwise {@code false}
+     * Returns whether this has actual class file contents or not.
+     * If not, this only refers the other existing class.
+     * @return {@code true} if the target has contents, otherwise {@code false}
      */
-    public boolean isProvided() {
-        return classFile.length == 0;
+    public boolean hasContents() {
+        return classFile.length != 0;
     }
 
     /**
@@ -90,7 +91,7 @@ public class ClassData {
      * @throws DiagnosticException if error was occurred while writing the class file
      */
     public void dump(ResourceContainer target) {
-        if (isProvided() == false) {
+        if (hasContents()) {
             Location location = Location.of(getDescription().getInternalName() + ".class"); //$NON-NLS-1$
             try (OutputStream output = target.addResource(location)) {
                 dump(output);
@@ -112,7 +113,15 @@ public class ClassData {
      */
     public void dump(OutputStream output) throws IOException {
         Arguments.requireNonNull(output);
-        Invariants.require(isProvided() == false);
+        Invariants.require(hasContents());
         output.write(classFile);
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "ClassData(%s, file=%,d)", //$NON-NLS-1$
+                getDescription().getClassName(),
+                classFile.length);
     }
 }

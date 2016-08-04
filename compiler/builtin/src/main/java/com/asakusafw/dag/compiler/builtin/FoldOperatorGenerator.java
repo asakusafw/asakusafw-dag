@@ -21,6 +21,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
@@ -40,19 +41,15 @@ import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.ValueDescription;
 import com.asakusafw.lang.compiler.model.graph.OperatorInput;
-import com.asakusafw.lang.compiler.model.graph.OperatorOutput;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.runtime.core.Result;
 import com.asakusafw.runtime.model.DataModel;
 import com.asakusafw.vocabulary.operator.Fold;
-import com.asakusafw.vocabulary.operator.Summarize;
 
 /**
  * Generates {@link Fold} operator.
  */
 public class FoldOperatorGenerator extends UserOperatorNodeGenerator {
-
-    static final String SUFFIX_COPIER = "$Copier";
 
     static final String SUFFIX_COMBINER = "$Combiner";
 
@@ -62,26 +59,42 @@ public class FoldOperatorGenerator extends UserOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
+    protected NodeInfo generate(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
         checkPorts(operator, i -> i == 1, i -> i == 1);
+        CacheKey key = CacheKey.builder()
+                .operator(operator)
+                .arguments(operator) // aggregate operation embeds its arguments into combiner class
+                .build();
+        ClassData adapter = context.cache(key, () -> generateClass(context, operator, namer.get()));
+        return new AggregateNodeInfo(
+                adapter,
+                null,
+                ObjectCopierGenerator.get(context, operator.getInputs().get(Fold.ID_INPUT).getDataType()),
+                getCombinerName(adapter.getDescription()),
+                operator.getInputs().get(Fold.ID_INPUT).getDataType(),
+                operator.getOutputs().get(Fold.ID_OUTPUT).getDataType(),
+                getDependencies(context, operator));
+    }
 
-        OperatorInput input = operator.getInputs().get(Summarize.ID_INPUT);
-        OperatorOutput output = operator.getOutputs().get(Summarize.ID_OUTPUT);
-        ClassDescription copierClass = generateCopierClass(context, operator, target);
+    private List<VertexElement> getDependencies(Context context, UserOperator operator) {
+        return context.getDependencies(operator.getOutputs());
+    }
+
+    private ClassDescription getCombinerName(ClassDescription outer) {
+        return new ClassDescription(outer.getBinaryName() + SUFFIX_COMBINER);
+    }
+
+    private ClassData generateClass(Context context, UserOperator operator, ClassDescription target) {
         ClassDescription combinerClass = generateCombinerClass(context, operator, target);
         ClassWriter writer = newWriter(target, CombineResult.class);
-        writer.visitInnerClass(
-                copierClass.getInternalName(),
-                target.getInternalName(),
-                copierClass.getSimpleName(),
-                Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC);
         writer.visitInnerClass(
                 combinerClass.getInternalName(),
                 target.getInternalName(),
                 combinerClass.getSimpleName(),
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC);
 
-        List<VertexElement> dependencies = getDefaultDependencies(context, operator);
+        OperatorInput input = operator.getInputs().get(Fold.ID_INPUT);
+        List<VertexElement> dependencies = getDependencies(context, operator);
         defineDependenciesConstructor(target, writer, dependencies,
                 method -> {
                     method.visitVarInsn(Opcodes.ALOAD, 0);
@@ -101,25 +114,11 @@ public class FoldOperatorGenerator extends UserOperatorNodeGenerator {
                 });
         writer.visitEnd();
 
-        return new AggregateNodeInfo(
-                new ClassData(target, writer::toByteArray),
-                null, copierClass, combinerClass,
-                input.getDataType(), output.getDataType(),
-                dependencies);
-    }
-
-    private ClassDescription generateCopierClass(Context context, UserOperator operator, ClassDescription outer) {
-        ClassDescription target = new ClassDescription(outer.getBinaryName() + SUFFIX_COPIER);
-        checkPorts(operator, i -> i == 1, i -> i == 1);
-        OperatorInput input = operator.getInputs().get(0);
-        ClassData data = new ObjectCopierGenerator().generate(input.getDataType(), target);
-        return context.addClassFile(data);
+        return new ClassData(target, writer::toByteArray);
     }
 
     private ClassDescription generateCombinerClass(Context context, UserOperator operator, ClassDescription outer) {
-        ClassDescription target = new ClassDescription(outer.getBinaryName() + SUFFIX_COMBINER);
-        checkPorts(operator, i -> i == 1, i -> i == 1);
-
+        ClassDescription target = getCombinerName(outer);
         OperatorInput input = operator.getInputs().get(0);
 
         ClassWriter writer = newWriter(target, Object.class, ObjectCombiner.class);

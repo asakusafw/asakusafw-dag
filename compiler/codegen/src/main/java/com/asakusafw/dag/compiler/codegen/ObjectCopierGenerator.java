@@ -17,6 +17,8 @@ package com.asakusafw.dag.compiler.codegen;
 
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
+import java.util.Objects;
+
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -30,16 +32,43 @@ import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
  * Generates {@link ObjectCopier} class.
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class ObjectCopierGenerator {
+public final class ObjectCopierGenerator {
+
+    private static final String CATEGORY = "util"; //$NON-NLS-1$
+
+    private ObjectCopierGenerator() {
+        return;
+    }
 
     /**
      * Generates {@link ObjectCopier} class.
-     * @param source the supplying type
-     * @param target the generating class name
-     * @return the generated class data
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class
+     * @since 0.2.0
      */
-    public ClassData generate(TypeDescription source, ClassDescription target) {
+    public static ClassDescription get(ClassGeneratorContext context, TypeDescription type) {
+        return context.addClassFile(generate(context, type));
+    }
+
+    /**
+     * Generates {@link ObjectCopier} class.
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class data
+     * @since 0.2.0
+     */
+    public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
+        return context.cache(new Key(type), () -> {
+            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "Copier")); //$NON-NLS-1$
+            return generate0(type, target);
+        });
+    }
+
+    private static ClassData generate0(TypeDescription source, ClassDescription target) {
         ClassWriter writer = AsmUtil.newWriter(target, Object.class, ObjectCopier.class);
         defineEmptyConstructor(writer, Object.class);
         defineNew(writer, source);
@@ -47,7 +76,7 @@ public class ObjectCopierGenerator {
         return new ClassData(target, writer::toByteArray);
     }
 
-    private void defineNew(ClassWriter writer, TypeDescription source) {
+    private static void defineNew(ClassWriter writer, TypeDescription source) {
         MethodVisitor v = writer.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "newCopy",
@@ -60,7 +89,7 @@ public class ObjectCopierGenerator {
         generateBody(v, source, target, input);
     }
 
-    private void defineNewWithBuffer(ClassWriter writer, TypeDescription source) {
+    private static void defineNewWithBuffer(ClassWriter writer, TypeDescription source) {
         MethodVisitor v = writer.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "newCopy",
@@ -72,7 +101,7 @@ public class ObjectCopierGenerator {
         generateBody(v, source, target, input);
     }
 
-    private void generateBody(MethodVisitor v, TypeDescription type, LocalVarRef target, LocalVarRef source) {
+    private static void generateBody(MethodVisitor v, TypeDescription type, LocalVarRef target, LocalVarRef source) {
         target.load(v);
         source.load(v);
         copyDataModel(v, type);
@@ -81,5 +110,42 @@ public class ObjectCopierGenerator {
         v.visitInsn(Opcodes.ARETURN);
         v.visitMaxs(0, 0);
         v.visitEnd();
+    }
+
+    private static class Key {
+
+        private final TypeDescription type;
+
+        Key(TypeDescription type) {
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hashCode(type);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Key other = (Key) obj;
+            return Objects.equals(type, other.type);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Copier(%s)", type); //$NON-NLS-1$
+        }
     }
 }
