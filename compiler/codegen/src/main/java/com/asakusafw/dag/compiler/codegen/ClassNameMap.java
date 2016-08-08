@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Invariants;
+import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.dag.utils.common.Tuple;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
@@ -55,19 +56,20 @@ public class ClassNameMap {
      * @return the class name
      */
     public ClassDescription get(String category, String hint) {
-        Arguments.require(PATTERN_CATEGORY.matcher(category).matches());
-        Arguments.require(hint == null || PATTERN_HINT.matcher(hint).matches());
-        Tuple<String, String> key = new Tuple<>(category, hint);
-        int count = counters.computeIfAbsent(key, k -> new AtomicInteger()).getAndIncrement();
-        return new ClassDescription(toClassName(category, hint, count));
+        String subpackage = Optionals.of(category)
+                .filter(s -> PATTERN_CATEGORY.matcher(s).matches())
+                .orElse("_"); //$NON-NLS-1$
+        String simpleNamePrefix = Optionals.of(hint)
+                .filter(s -> PATTERN_HINT.matcher(s).matches())
+                .orElse(""); //$NON-NLS-1$
+        int count = counters
+                .computeIfAbsent(new Tuple<>(subpackage, simpleNamePrefix), k -> new AtomicInteger())
+                .getAndIncrement();
+        return new ClassDescription(toClassName(subpackage, simpleNamePrefix, count));
     }
 
-    private String toClassName(String category, String hint, int count) {
+    private String toClassName(String category, String simpleNamePrefix, int count) {
         Invariants.require(count >= 0);
-        return String.format("%s%s.%s_%d", //$NON-NLS-1$
-                prefix,
-                category,
-                hint != null ? hint : "", //$NON-NLS-1$
-                count);
+        return String.format("%s%s.%s_%d", prefix, category, simpleNamePrefix, count); //$NON-NLS-1$
     }
 }
