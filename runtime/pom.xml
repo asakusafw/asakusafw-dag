@@ -20,6 +20,7 @@
     <!-- features -->
     <module>internalio</module>
     <module>directio</module>
+    <module>jdbc</module>
 
     <!-- extensions -->
     <module>extension/counter</module>

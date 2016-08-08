@@ -118,6 +118,8 @@ public interface InterruptibleIo extends AutoCloseable {
 
     /**
      * Closes {@link InterruptibleIo} objects.
+     * @since 0.1.0
+     * @version 0.2.0
      */
     class Closer implements InterruptibleIo {
 
@@ -140,6 +142,18 @@ public interface InterruptibleIo extends AutoCloseable {
          */
         public void keep() {
             targets.clear();
+        }
+
+        /**
+         * Creates a new copy and resets this object.
+         * @return the copy
+         * @since 0.2.0
+         */
+        public Closer move() {
+            Closer copy = new Closer();
+            copy.targets.addAll(targets);
+            targets.clear();
+            return copy;
         }
 
         @Override
