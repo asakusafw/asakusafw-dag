@@ -61,4 +61,9 @@ public class InputNode implements VertexElement {
     public List<? extends VertexElement> getDependencies() {
         return Collections.singletonList(consumer);
     }
+
+    @Override
+    public String toString() {
+        return "Input"; //$NON-NLS-1$
+    }
 }

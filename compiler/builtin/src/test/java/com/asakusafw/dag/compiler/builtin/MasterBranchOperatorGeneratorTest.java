@@ -18,16 +18,20 @@ package com.asakusafw.dag.compiler.builtin;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
 
 import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.NodeInfo;
+import com.asakusafw.dag.compiler.model.graph.DataTableNode;
+import com.asakusafw.dag.runtime.adapter.DataTable;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
 import com.asakusafw.dag.runtime.testing.MockKeyModel;
 import com.asakusafw.dag.runtime.testing.MockSink;
 import com.asakusafw.lang.compiler.model.PropertyName;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
+import com.asakusafw.lang.compiler.model.graph.Groups;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.lang.compiler.model.graph.UserOperator.Builder;
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor;
@@ -128,14 +132,74 @@ public class MasterBranchOperatorGeneratorTest extends OperatorNodeGeneratorTest
         assertThat(x.get(MockDataModel::getValue), hasSize(0));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different strategy.
+     */
+    @Test
+    public void cache_diff_strategy() {
+        UserOperator opA = load("simple").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generateWithTable(opA);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
     private Builder load(String name) {
         Builder builder = OperatorExtractor.extract(MasterBranch.class, Op.class, name)
-                .input("master", Descriptions.typeOf(MockKeyModel.class))
-                .input("transaction", Descriptions.typeOf(MockDataModel.class));
+                .input("master", Descriptions.typeOf(MockKeyModel.class), Groups.parse(Arrays.asList("key")))
+                .input("transaction", Descriptions.typeOf(MockDataModel.class), Groups.parse(Arrays.asList("key")));
         for (Switch s : Switch.values()) {
             builder.output(PropertyName.of(s.name()).toMemberName(), Descriptions.typeOf(MockDataModel.class));
         }
         return builder;
+    }
+
+    private NodeInfo generateWithTable(UserOperator operator) {
+        NodeInfo info = generate(operator, c -> {
+            c.put(operator.findInput("master"), new DataTableNode("master",
+                    Descriptions.typeOf(DataTable.class),
+                    Descriptions.typeOf(MockKeyModel.class)));
+            operator.getOutputs().forEach(o -> c.put(o, result(o.getDataType())));
+        });
+        return info;
     }
 
     @SuppressWarnings("javadoc")
@@ -144,6 +208,11 @@ public class MasterBranchOperatorGeneratorTest extends OperatorNodeGeneratorTest
         @MasterBranch
         public Switch simple(MockKeyModel k, MockDataModel v) {
             return parameterized(k, v, Switch.X.name());
+        }
+
+        @MasterBranch
+        public Switch renamed(MockKeyModel k, MockDataModel v) {
+            return simple(k, v);
         }
 
         @MasterBranch

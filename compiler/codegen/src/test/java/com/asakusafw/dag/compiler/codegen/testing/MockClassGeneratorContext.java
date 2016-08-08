@@ -15,10 +15,15 @@
  */
 package com.asakusafw.dag.compiler.codegen.testing;
 
-import com.asakusafw.dag.compiler.codegen.BasicSupplierProvider;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
-import com.asakusafw.dag.compiler.codegen.SupplierProvider;
+import com.asakusafw.dag.compiler.codegen.ClassNameMap;
 import com.asakusafw.dag.compiler.model.ClassData;
+import com.asakusafw.dag.utils.common.Invariants;
+import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.lang.compiler.api.DataModelLoader;
 import com.asakusafw.lang.compiler.api.testing.MockDataModelLoader;
 import com.asakusafw.lang.compiler.common.ResourceContainer;
@@ -33,9 +38,11 @@ public class MockClassGeneratorContext implements ClassGeneratorContext {
 
     private final DataModelLoader dataModelLoader;
 
-    private final SupplierProvider supplierProvider;
-
     private final ResourceContainer resourceContainer;
+
+    private final ClassNameMap namer = new ClassNameMap("com.example."); //$NON-NLS-1$
+
+    private final Map<Object, ClassDescription> cache = new HashMap<>();
 
     /**
      * Creates a new instance.
@@ -46,9 +53,6 @@ public class MockClassGeneratorContext implements ClassGeneratorContext {
         this.classLoader = classLoader;
         this.resourceContainer = resourceContainer;
         this.dataModelLoader = new MockDataModelLoader(classLoader);
-        this.supplierProvider = new BasicSupplierProvider(
-                c -> c.dump(resourceContainer),
-                s -> new ClassDescription("testing." + s + "Supplier")); //$NON-NLS-1$
     }
 
     @Override
@@ -62,13 +66,24 @@ public class MockClassGeneratorContext implements ClassGeneratorContext {
     }
 
     @Override
-    public SupplierProvider getSupplierProvider() {
-        return supplierProvider;
-    }
-
-    @Override
     public ClassDescription addClassFile(ClassData data) {
         data.dump(resourceContainer);
         return data.getDescription();
+    }
+
+    @Override
+    public ClassDescription getClassName(String category, String hint) {
+        return namer.get(category, hint);
+    }
+
+    @Override
+    public Optional<ClassDescription> findCache(Object key) {
+        return Optionals.get(cache, key);
+    }
+
+    @Override
+    public void addCache(Object key, ClassDescription target) {
+        ClassDescription victim = cache.putIfAbsent(key, target);
+        Invariants.require(victim == null, () -> key);
     }
 }

@@ -16,13 +16,17 @@
 package com.asakusafw.dag.compiler.codegen;
 
 import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.adapter.ObjectCopier;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
 /**
@@ -35,8 +39,7 @@ public class ObjectCopierGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void simple() {
-        ObjectCopierGenerator generator = new ObjectCopierGenerator();
-        ClassDescription gen = add(c -> generator.generate(classOf(MockDataModel.class), c));
+        ClassDescription gen = ObjectCopierGenerator.get(context(), classOf(MockDataModel.class));
         loading(cl -> {
             @SuppressWarnings("unchecked")
             ObjectCopier<MockDataModel> o = (ObjectCopier<MockDataModel>) gen.resolve(cl).newInstance();
@@ -52,8 +55,7 @@ public class ObjectCopierGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void with_buffer() {
-        ObjectCopierGenerator generator = new ObjectCopierGenerator();
-        ClassDescription gen = add(c -> generator.generate(classOf(MockDataModel.class), c));
+        ClassDescription gen = ObjectCopierGenerator.get(context(), classOf(MockDataModel.class));
         loading(cl -> {
             @SuppressWarnings("unchecked")
             ObjectCopier<MockDataModel> o = (ObjectCopier<MockDataModel>) gen.resolve(cl).newInstance();
@@ -64,5 +66,25 @@ public class ObjectCopierGeneratorTest extends ClassGeneratorTestRoot {
             assertThat(o2, is(not(sameInstance(o1))));
             assertThat(o2, is(sameInstance(buf)));
         });
+    }
+
+    /**
+     * cache - equivalent.
+     */
+    @Test
+    public void cache() {
+        ClassData a = ObjectCopierGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = ObjectCopierGenerator.generate(context(), typeOf(MockDataModel.class));
+        assertThat(b, is(cacheOf(a)));
+    }
+
+    /**
+     * cache w/ different types.
+     */
+    @Test
+    public void cache_diff_type() {
+        ClassData a = ObjectCopierGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = ObjectCopierGenerator.generate(context(), typeOf(MockKeyValueModel.class));
+        assertThat(b, is(not(cacheOf(a))));
     }
 }

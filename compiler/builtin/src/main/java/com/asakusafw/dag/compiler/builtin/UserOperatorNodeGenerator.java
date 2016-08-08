@@ -18,6 +18,7 @@ package com.asakusafw.dag.compiler.builtin;
 import static com.asakusafw.dag.compiler.builtin.Util.*;
 
 import java.lang.annotation.Annotation;
+import java.util.function.Supplier;
 
 import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
@@ -27,6 +28,8 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator;
 
 /**
  * Generates classes for processing Asakusa user operators.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public abstract class UserOperatorNodeGenerator implements OperatorNodeGenerator {
 
@@ -40,10 +43,13 @@ public abstract class UserOperatorNodeGenerator implements OperatorNodeGenerator
      * Generates a class for processing the operator, and returns the generated class binary.
      * @param context the current context
      * @param operator the target operator
-     * @param target the target class
+     * @param namer the class namer
      * @return the generated node info
      */
-    protected abstract NodeInfo generate(Context context, UserOperator operator, ClassDescription target);
+    protected abstract NodeInfo generate(
+            Context context,
+            UserOperator operator,
+            Supplier<? extends ClassDescription> namer);
 
     @Override
     public final ClassDescription getAnnotationType() {
@@ -51,8 +57,8 @@ public abstract class UserOperatorNodeGenerator implements OperatorNodeGenerator
     }
 
     @Override
-    public final NodeInfo generate(Context context, Operator operator, ClassDescription targetClass) {
+    public final NodeInfo generate(Context context, Operator operator, Supplier<? extends ClassDescription> namer) {
         checkDependencies(context, operator);
-        return generate(context, (UserOperator) operator, targetClass) ;
+        return generate(context, (UserOperator) operator, namer);
     }
 }

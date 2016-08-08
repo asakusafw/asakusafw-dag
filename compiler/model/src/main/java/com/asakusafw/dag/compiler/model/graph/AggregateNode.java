@@ -141,4 +141,11 @@ public class AggregateNode implements ClassNode, DataNode {
     public List<? extends VertexElement> getDependencies() {
         return dependencies;
     }
+
+    @Override
+    public String toString() {
+        return String.format("Aggregate:%s(%s)", //$NON-NLS-1$
+                getImplementationType().getClassName(),
+                getDataType());
+    }
 }

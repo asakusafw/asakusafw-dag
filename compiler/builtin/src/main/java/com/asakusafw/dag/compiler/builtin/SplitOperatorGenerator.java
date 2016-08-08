@@ -22,6 +22,7 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -53,15 +54,25 @@ public class SplitOperatorGenerator extends UserOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
+    protected NodeInfo generate(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
         checkPorts(operator, i -> i == 1, i -> i == 2);
         checkArgs(operator, i -> i == 0);
+        return new OperatorNodeInfo(
+                context.cache(CacheKey.of(operator), () -> generateClass(context, operator, namer.get())),
+                operator.getInputs().get(Split.ID_INPUT).getDataType(),
+                getDependencies(context, operator));
+    }
 
+    private List<VertexElement> getDependencies(Context context, UserOperator operator) {
+        return context.getDependencies(operator.getOutputs());
+    }
+
+    private ClassData generateClass(Context context, UserOperator operator, ClassDescription target) {
         OperatorInput input = operator.getInputs().get(Split.ID_INPUT);
         OperatorOutput left = operator.getOutputs().get(Split.ID_OUTPUT_LEFT);
         OperatorOutput right = operator.getOutputs().get(Split.ID_OUTPUT_RIGHT);
 
-        List<VertexElement> dependencies = context.getDependencies(operator.getOutputs());
+        List<VertexElement> dependencies = getDependencies(context, operator);
 
         List<PropertyMapping> mappings = Invariants.safe(
                 () -> JoinedModelUtil.getPropertyMappings(context.getClassLoader(), operator));
@@ -107,9 +118,6 @@ public class SplitOperatorGenerator extends UserOperatorNodeGenerator {
             rightVar.load(method);
             invokeResultAdd(method);
         });
-        return new OperatorNodeInfo(
-                new ClassData(target, writer::toByteArray),
-                input.getDataType(),
-                dependencies);
+        return new ClassData(target, writer::toByteArray);
     }
 }

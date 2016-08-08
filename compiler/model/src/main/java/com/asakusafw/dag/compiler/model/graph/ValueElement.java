@@ -75,4 +75,9 @@ public class ValueElement implements VertexElement {
     public List<? extends VertexElement> getDependencies() {
         return Collections.emptyList();
     }
+    @Override
+    public String toString() {
+        return String.format("Value:%s", //$NON-NLS-1$
+                getValue());
+    }
 }

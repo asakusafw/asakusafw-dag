@@ -114,6 +114,58 @@ public class CoGroupOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         assertThat(Lang.project(results.getResults(), e -> e.getValue()), contains("Hello?"));
     }
 
+    /**
+     * cache - simple case.
+     */
+    @Test
+    public void cache() {
+        UserOperator opA = load("simple")
+                .input("i0", Descriptions.typeOf(MockDataModel.class))
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opA);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple")
+                .input("i0", Descriptions.typeOf(MockDataModel.class))
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        UserOperator opB = load("renamed")
+                .input("i0", Descriptions.typeOf(MockDataModel.class))
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .input("i0", Descriptions.typeOf(MockDataModel.class))
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .argument("p", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .input("i0", Descriptions.typeOf(MockDataModel.class))
+                .output("r0", Descriptions.typeOf(MockValueModel.class))
+                .argument("p", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(CoGroup.class, Op.class, name);
     }
@@ -124,6 +176,11 @@ public class CoGroupOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
         @CoGroup
         public void simple(List<MockDataModel> i0, Result<MockValueModel> r0) {
             parameterized(i0, r0, "!");
+        }
+
+        @CoGroup
+        public void renamed(List<MockDataModel> i0, Result<MockValueModel> r0) {
+            simple(i0, r0);
         }
 
         @CoGroup

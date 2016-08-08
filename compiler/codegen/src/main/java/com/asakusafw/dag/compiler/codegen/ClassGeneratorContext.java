@@ -15,6 +15,9 @@
  */
 package com.asakusafw.dag.compiler.codegen;
 
+import java.util.Optional;
+import java.util.function.Supplier;
+
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.lang.compiler.api.DataModelLoader;
 import com.asakusafw.lang.compiler.common.DiagnosticException;
@@ -22,6 +25,8 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
 /**
  * An abstract super interface of class generator contexts.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public interface ClassGeneratorContext {
 
@@ -38,10 +43,23 @@ public interface ClassGeneratorContext {
     DataModelLoader getDataModelLoader();
 
     /**
-     * Returns the current supplier provider.
-     * @return the current supplier provider
+     * Returns a unique class name for the target category.
+     * @param category the category name (must be a sub-package name)
+     * @return the unique class name
+     * @since 0.2.0
      */
-    SupplierProvider getSupplierProvider();
+    default ClassDescription getClassName(String category) {
+        return getClassName(category, null);
+    }
+
+    /**
+     * Returns a unique class name for the target category.
+     * @param category the category name (must be a sub-package name)
+     * @param hint the simple class name hint (nullable)
+     * @return the unique class name
+     * @since 0.2.0
+     */
+    ClassDescription getClassName(String category, String hint);
 
     /**
      * Adds a new Java class file.
@@ -50,6 +68,42 @@ public interface ClassGeneratorContext {
      * @throws DiagnosticException if an error was occurred while adding the class file
      */
     ClassDescription addClassFile(ClassData data);
+
+    /**
+     * Returns a cached class for the specified key.
+     * @param key the cache key
+     * @return the corresponded cache, or empty if there is no such a cached class
+     * @see #addCache(Object, ClassDescription)
+     * @since 0.2.0
+     */
+    Optional<ClassDescription> findCache(Object key);
+
+    /**
+     * Adds a class cache for the specified key only if cache is enabled.
+     * @param key the cache key
+     * @param target the target class
+     * @see #findCache(Object)
+     * @since 0.2.0
+     */
+    void addCache(Object key, ClassDescription target);
+
+    /**
+     * Returns a cached class or add a new class data if it has not been cached.
+     * @param key the cache key
+     * @param defaultValue the default class data if missing cached class
+     * @return the added class data
+     * @see #addCache(Object, ClassDescription)
+     * @since 0.2.0
+     */
+    default ClassData cache(Object key, Supplier<? extends ClassData> defaultValue) {
+        return findCache(key)
+                .map(ClassData::new)
+                .orElseGet(() -> {
+                    ClassData data = defaultValue.get();
+                    addCache(key, data.getDescription());
+                    return data;
+                });
+    }
 
     /**
      * Forwarding for {@link ClassGeneratorContext}.
@@ -73,13 +127,33 @@ public interface ClassGeneratorContext {
         }
 
         @Override
-        default SupplierProvider getSupplierProvider() {
-            return getForward().getSupplierProvider();
+        default ClassDescription getClassName(String category) {
+            return ClassGeneratorContext.super.getClassName(category);
+        }
+
+        @Override
+        default ClassDescription getClassName(String category, String hint) {
+            return getForward().getClassName(category, hint);
         }
 
         @Override
         default ClassDescription addClassFile(ClassData data) {
             return getForward().addClassFile(data);
+        }
+
+        @Override
+        default void addCache(Object key, ClassDescription target) {
+            getForward().addCache(key, target);
+        }
+
+        @Override
+        default Optional<ClassDescription> findCache(Object key) {
+            return getForward().findCache(key);
+        }
+
+        @Override
+        default ClassData cache(Object key, Supplier<? extends ClassData> defaultValue) {
+            return ClassGeneratorContext.super.cache(key, defaultValue);
         }
     }
 }

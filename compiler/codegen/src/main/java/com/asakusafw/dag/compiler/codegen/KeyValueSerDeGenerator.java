@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.objectweb.asm.ClassWriter;
@@ -31,7 +32,6 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import com.asakusafw.dag.api.common.KeyValueSerDe;
-import com.asakusafw.dag.api.common.ValueSerDe;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.FieldRef;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.LocalVarRef;
 import com.asakusafw.dag.compiler.model.ClassData;
@@ -43,23 +43,51 @@ import com.asakusafw.lang.compiler.api.reference.PropertyReference;
 import com.asakusafw.lang.compiler.model.PropertyName;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
+import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.lang.compiler.model.graph.Group;
 
 /**
- * Generates {@link KeyValueSerDe}.
+ * Generates {@link KeyValueSerDe} class.
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class KeyValueSerDeGenerator {
+public final class KeyValueSerDeGenerator {
 
     static final ClassDescription SERDE = Descriptions.classOf(ValueOptionSerDe.class);
 
+    private static final String CATEGORY = "serde"; //$NON-NLS-1$
+
+    private KeyValueSerDeGenerator() {
+        return;
+    }
+
     /**
-     * Generates {@link ValueSerDe} class.
-     * @param reference the target data model
+     * Generates {@link KeyValueSerDe} class.
+     * @param context the current context
+     * @param type the target data model type
      * @param grouping the grouping information
-     * @param target the generating class name
+     * @return the generated class
+     */
+    public static ClassDescription get(ClassGeneratorContext context, TypeDescription type, Group grouping) {
+        return context.addClassFile(generate(context, type, grouping));
+    }
+
+    /**
+     * Generates {@link KeyValueSerDe} class.
+     * @param context the current context
+     * @param type the target data model type
+     * @param grouping the grouping information
      * @return the generated class data
      */
-    public ClassData generate(DataModelReference reference, Group grouping, ClassDescription target) {
+    public static ClassData generate(ClassGeneratorContext context, TypeDescription type, Group grouping) {
+        return context.cache(new Key(type, grouping), () -> {
+            DataModelReference ref = context.getDataModelLoader().load(type);
+            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "KvSerDe")); //$NON-NLS-1$
+            return generate0(ref, grouping, target);
+        });
+    }
+
+    private static ClassData generate0(DataModelReference reference, Group grouping, ClassDescription target) {
         List<PropertyReference> keys = Lang.project(
                 grouping.getGrouping(),
                 n -> Invariants.requireNonNull(reference.findProperty(n)));
@@ -77,7 +105,7 @@ public class KeyValueSerDeGenerator {
         return new ClassData(target, writer::toByteArray);
     }
 
-    private List<PropertyReference> collectValues(DataModelReference reference, Group grouping) {
+    private static List<PropertyReference> collectValues(DataModelReference reference, Group grouping) {
         List<PropertyReference> results = new ArrayList<>();
         Set<PropertyName> saw = new HashSet<>();
         saw.addAll(grouping.getGrouping());
@@ -92,7 +120,7 @@ public class KeyValueSerDeGenerator {
         return results;
     }
 
-    private void putSerialize(
+    private static void putSerialize(
             String methodName,
             DataModelReference reference, List<PropertyReference> properties,
             ClassWriter writer) {
@@ -138,7 +166,7 @@ public class KeyValueSerDeGenerator {
         v.visitEnd();
     }
 
-    private void putDeserialize(
+    private static void putDeserialize(
             DataModelReference reference,
             List<PropertyReference> keys, List<PropertyReference> values,
             FieldRef buffer, ClassWriter writer) {
@@ -165,7 +193,7 @@ public class KeyValueSerDeGenerator {
         v.visitEnd();
     }
 
-    private void putDeserializeBody(MethodVisitor v, List<PropertyReference> props,
+    private static void putDeserializeBody(MethodVisitor v, List<PropertyReference> props,
             LocalVarRef input, LocalVarRef object) {
         if (props.isEmpty()) {
             input.load(v);
@@ -191,6 +219,48 @@ public class KeyValueSerDeGenerator {
                                 typeOf(DataInput.class)),
                         false);
             }
+        }
+    }
+
+    private static class Key {
+
+        private final TypeDescription type;
+
+        private final Group group;
+
+        Key(TypeDescription type, Group group) {
+            this.type = type;
+            this.group = group;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hashCode(type);
+            result = prime * result + Objects.hashCode(group);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Key other = (Key) obj;
+            if (!Objects.equals(type, other.type)) {
+                return false;
+            }
+            if (!Objects.equals(group, other.group)) {
+                return false;
+            }
+            return true;
         }
     }
 }

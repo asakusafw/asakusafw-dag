@@ -17,6 +17,8 @@ package com.asakusafw.dag.compiler.builtin;
 
 import static com.asakusafw.dag.compiler.builtin.Util.*;
 
+import java.util.function.Supplier;
+
 import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator;
@@ -38,10 +40,13 @@ public abstract class CoreOperatorNodeGenerator implements OperatorNodeGenerator
      * Generates a class for processing the operator, and returns the generated class binary.
      * @param context the current context
      * @param operator the target operator
-     * @param targetClass the target class
+     * @param namer the class namer
      * @return the generated node info
      */
-    protected abstract NodeInfo generate(Context context, CoreOperator operator, ClassDescription targetClass);
+    protected abstract NodeInfo generate(
+            Context context,
+            CoreOperator operator,
+            Supplier<? extends ClassDescription> namer);
 
     @Override
     public final ClassDescription getAnnotationType() {
@@ -49,8 +54,8 @@ public abstract class CoreOperatorNodeGenerator implements OperatorNodeGenerator
     }
 
     @Override
-    public final NodeInfo generate(Context context, Operator operator, ClassDescription targetClass) {
+    public NodeInfo generate(Context context, Operator operator, Supplier<? extends ClassDescription> classNamer) {
         checkDependencies(context, operator);
-        return generate(context, (CoreOperator) operator, targetClass);
+        return generate(context, (CoreOperator) operator, classNamer);
     }
 }

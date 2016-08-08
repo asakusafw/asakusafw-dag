@@ -15,6 +15,8 @@
  */
 package com.asakusafw.dag.compiler.builtin;
 
+import java.util.function.Supplier;
+
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
@@ -31,7 +33,7 @@ public class ExtendOperatorGenerator extends CoreOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, CoreOperator operator, ClassDescription targetClass) {
-        return ProjectOperatorGenerator.gen(context, operator, targetClass);
+    protected NodeInfo generate(Context context, CoreOperator operator, Supplier<? extends ClassDescription> namer) {
+        return ProjectOperatorGenerator.gen(context, operator, namer);
     }
 }

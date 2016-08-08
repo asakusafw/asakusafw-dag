@@ -20,6 +20,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Objects;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
@@ -35,21 +36,50 @@ import com.asakusafw.lang.compiler.api.reference.DataModelReference;
 import com.asakusafw.lang.compiler.api.reference.PropertyReference;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
+import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
  * Generates {@link ValueSerDe}.
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class ValueSerDeGenerator {
+public final class ValueSerDeGenerator {
 
-    static final ClassDescription SERDE = Descriptions.classOf(ValueOptionSerDe.class);
+    private static final ClassDescription SERDE = Descriptions.classOf(ValueOptionSerDe.class);
+
+    private static final String CATEGORY = "serde"; //$NON-NLS-1$
+
+    private ValueSerDeGenerator() {
+        return;
+    }
 
     /**
      * Generates {@link ValueSerDe} class.
-     * @param reference the target data model
-     * @param target the generating class name
-     * @return the generated class data
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class
+     * @since 0.2.0
      */
-    public ClassData generate(DataModelReference reference, ClassDescription target) {
+    public static ClassDescription get(ClassGeneratorContext context, TypeDescription type) {
+        return context.addClassFile(generate(context, type));
+    }
+
+    /**
+     * Generates {@link ValueSerDe} class.
+     * @param context the current context
+     * @param type the target data model type
+     * @return the generated class data
+     * @since 0.2.0
+     */
+    public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
+        return context.cache(new Key(type), () -> {
+            DataModelReference ref = context.getDataModelLoader().load(type);
+            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "SerDe")); //$NON-NLS-1$
+            return generate0(ref, target);
+        });
+    }
+
+    private static ClassData generate0(DataModelReference reference, ClassDescription target) {
         ClassWriter writer = newWriter(target, Object.class, ValueSerDe.class);
         FieldRef buffer = defineField(writer, target, "buffer", typeOf(reference));
         defineEmptyConstructor(writer, Object.class, v -> {
@@ -62,7 +92,7 @@ public class ValueSerDeGenerator {
         return new ClassData(target, writer::toByteArray);
     }
 
-    private void putSerialize(DataModelReference reference, ClassWriter writer) {
+    private static void putSerialize(DataModelReference reference, ClassWriter writer) {
         MethodVisitor v = writer.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "serialize",
@@ -93,7 +123,7 @@ public class ValueSerDeGenerator {
         v.visitEnd();
     }
 
-    private void putDeserialize(DataModelReference reference, FieldRef buffer, ClassWriter writer) {
+    private static void putDeserialize(DataModelReference reference, FieldRef buffer, ClassWriter writer) {
         MethodVisitor v = writer.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "deserialize",
@@ -127,5 +157,42 @@ public class ValueSerDeGenerator {
         v.visitInsn(Opcodes.ARETURN);
         v.visitMaxs(0, 0);
         v.visitEnd();
+    }
+
+    private static class Key {
+
+        private final TypeDescription type;
+
+        Key(TypeDescription type) {
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hashCode(type);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            Key other = (Key) obj;
+            return Objects.equals(type, other.type);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("ValueSerDe(%s)", type); //$NON-NLS-1$
+        }
     }
 }

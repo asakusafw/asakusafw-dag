@@ -16,6 +16,7 @@
 package com.asakusafw.dag.compiler.builtin;
 
 import java.lang.annotation.Annotation;
+import java.util.function.Supplier;
 
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
@@ -32,7 +33,7 @@ public class GroupSortOperatorGenerator extends UserOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, UserOperator operator, ClassDescription target) {
-        return CoGroupOperatorGenerator.gen(context, operator, target);
+    protected NodeInfo generate(Context context, UserOperator operator, Supplier<? extends ClassDescription> namer) {
+        return CoGroupOperatorGenerator.gen(context, operator, namer);
     }
 }

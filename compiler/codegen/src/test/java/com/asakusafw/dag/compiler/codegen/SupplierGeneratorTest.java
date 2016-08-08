@@ -16,13 +16,19 @@
 package com.asakusafw.dag.compiler.codegen;
 
 import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.*;
 
 import java.util.function.Supplier;
 
 import org.junit.Test;
 
+import com.asakusafw.dag.compiler.model.ClassData;
+import com.asakusafw.dag.runtime.testing.MockDataModel;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
 /**
@@ -35,8 +41,7 @@ public class SupplierGeneratorTest extends ClassGeneratorTestRoot {
      */
     @Test
     public void simple() {
-        SupplierGenerator generator = new SupplierGenerator();
-        ClassDescription gen = add(c -> generator.generate(classOf(String.class), c));
+        ClassDescription gen = SupplierGenerator.get(context(), classOf(String.class));
         loading(cl -> {
             Supplier<?> object = (Supplier<?>) gen.resolve(cl).newInstance();
             Object o0 = object.get();
@@ -45,5 +50,26 @@ public class SupplierGeneratorTest extends ClassGeneratorTestRoot {
             assertThat(o1, instanceOf(String.class));
             assertThat(o0, is(not(sameInstance(o1))));
         });
+    }
+
+
+    /**
+     * cache - equivalent.
+     */
+    @Test
+    public void cache() {
+        ClassData a = SupplierGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = SupplierGenerator.generate(context(), typeOf(MockDataModel.class));
+        assertThat(b, is(cacheOf(a)));
+    }
+
+    /**
+     * cache w/ different types.
+     */
+    @Test
+    public void cache_diff_type() {
+        ClassData a = SupplierGenerator.generate(context(), typeOf(MockDataModel.class));
+        ClassData b = SupplierGenerator.generate(context(), typeOf(MockKeyValueModel.class));
+        assertThat(b, is(not(cacheOf(a))));
     }
 }

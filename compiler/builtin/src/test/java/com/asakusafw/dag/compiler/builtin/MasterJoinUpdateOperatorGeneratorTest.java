@@ -306,13 +306,62 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
         assertThat(m.get(MockDataModel::getValue), containsInAnyOrder("T0", "T1"));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different strategy.
+     */
+    @Test
+    public void cache_diff_strategy() {
+        UserOperator opA = load("simple").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generateWithTable(opA);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
     private NodeInfo generateWithTable(UserOperator operator) {
         NodeInfo info = generate(operator, c -> {
             c.put(operator.findInput("master"), new DataTableNode("master",
                     Descriptions.typeOf(DataTable.class),
                     Descriptions.typeOf(MockKeyValueModel.class)));
-            c.put(operator.findOutput("found"), result(Descriptions.typeOf(MockDataModel.class)));
-            c.put(operator.findOutput("missing"), result(Descriptions.typeOf(MockDataModel.class)));
+            operator.getOutputs().forEach(o -> c.put(o, result(o.getDataType())));
         });
         return info;
     }
@@ -335,6 +384,11 @@ public class MasterJoinUpdateOperatorGeneratorTest extends OperatorNodeGenerator
         @MasterJoinUpdate
         public void simple(MockKeyValueModel k, MockDataModel v) {
             parameterized(k, v, "!");
+        }
+
+        @MasterJoinUpdate
+        public void renamed(MockKeyValueModel k, MockDataModel v) {
+            simple(k, v);
         }
 
         @MasterJoinUpdate

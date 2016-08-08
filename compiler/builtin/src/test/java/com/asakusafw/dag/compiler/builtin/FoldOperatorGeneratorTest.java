@@ -23,6 +23,7 @@ import java.util.Arrays;
 import org.junit.Test;
 
 import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.AggregateNodeInfo;
+import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.NodeInfo;
 import com.asakusafw.dag.runtime.adapter.ObjectCombiner;
 import com.asakusafw.dag.runtime.adapter.ObjectCopier;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
@@ -94,7 +95,8 @@ public class FoldOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         AggregateNodeInfo info = (AggregateNodeInfo) generate(operator);
         MockSink<MockDataModel> results = new MockSink<>();
         loading(info, c -> {
-            Result<Object> r = c.newInstance(results, "*");
+            // fold operator embeds its arguments
+            Result<Object> r = c.newInstance(results);
             r.add(cogroup(new Object[][] {
                 {
                     new MockDataModel(1, "A"),
@@ -127,6 +129,45 @@ public class FoldOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         });
     }
 
+    /**
+     * cache - simple case.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
+    /**
+     * cache - different arguments.
+     */
+    @Test
+    public void cache_diff_argument() {
+        UserOperator opA = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("a"))
+                .build();
+        UserOperator opB = load("parameterized")
+                .argument("parameterized", Descriptions.valueOf("b"))
+                .build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat("fold operator embeds its arguments", b, not(useCacheOf(a)));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(Fold.class, Op.class, name)
                 .input("in", Descriptions.typeOf(MockDataModel.class), Groups.parse(Arrays.asList("key")))
@@ -139,6 +180,11 @@ public class FoldOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         @Fold
         public void simple(MockDataModel a, MockDataModel b) {
             parameterized(a, b, "!");
+        }
+
+        @Fold
+        public void renamed(MockDataModel a, MockDataModel b) {
+            simple(a, b);
         }
 
         @Fold

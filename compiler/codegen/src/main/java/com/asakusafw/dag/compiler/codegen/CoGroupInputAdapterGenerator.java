@@ -22,8 +22,6 @@ import java.util.List;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.skeleton.CoGroupInputAdapter;
@@ -37,8 +35,6 @@ import com.asakusafw.lang.compiler.model.description.TypeDescription;
  */
 public class CoGroupInputAdapterGenerator {
 
-    static final Logger LOG = LoggerFactory.getLogger(CoGroupInputAdapterGenerator.class);
-
     /**
      * Generates {@link ExtractInputAdapter} class.
      * @param context the current context
@@ -47,13 +43,13 @@ public class CoGroupInputAdapterGenerator {
      * @return the generated class data
      */
     public ClassData generate(ClassGeneratorContext context, List<Spec> inputs, ClassDescription target) {
-        SupplierProvider suppliers = context.getSupplierProvider();
         ClassWriter writer = AsmUtil.newWriter(target, CoGroupInputAdapter.class);
         defineAdapterConstructor(writer, CoGroupInputAdapter.class, v -> {
             for (Spec spec : inputs) {
+                ClassDescription supplier = SupplierGenerator.get(context, spec.dataType);
                 v.visitVarInsn(Opcodes.ALOAD, 0);
                 getConst(v, spec.id);
-                getConst(v, typeOf(suppliers.getSupplier(spec.dataType)));
+                getConst(v, typeOf(supplier));
                 getEnumConstant(v, getBufferType(spec));
                 v.visitMethodInsn(
                         Opcodes.INVOKEVIRTUAL,

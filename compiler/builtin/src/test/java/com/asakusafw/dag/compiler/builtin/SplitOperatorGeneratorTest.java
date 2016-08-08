@@ -56,6 +56,29 @@ public class SplitOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
         assertThat(t.get(MockDataModel::getValue), contains("T"));
     }
 
+    /**
+     * cache - identical.
+     */
+    @Test
+    public void cache() {
+        UserOperator operator = load("simple").build();
+        NodeInfo a = generate(operator);
+        NodeInfo b = generate(operator);
+        assertThat(b, useCacheOf(a));
+    }
+
+    /**
+     * cache - different methods.
+     */
+    @Test
+    public void cache_diff_method() {
+        UserOperator opA = load("simple").build();
+        UserOperator opB = load("renamed").build();
+        NodeInfo a = generate(opA);
+        NodeInfo b = generate(opB);
+        assertThat(b, not(useCacheOf(a)));
+    }
+
     private Builder load(String name) {
         return OperatorExtractor.extract(Split.class, Op.class, name)
                 .input("joined", Descriptions.typeOf(MockJoined.class))
@@ -69,6 +92,11 @@ public class SplitOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot {
 
         @Split
         public void simple(MockJoined j, Result<MockKeyValueModel> m, Result<MockDataModel> t) {
+            throw new AssertionError();
+        }
+
+        @Split
+        public void renamed(MockJoined j, Result<MockKeyValueModel> m, Result<MockDataModel> t) {
             throw new AssertionError();
         }
     }

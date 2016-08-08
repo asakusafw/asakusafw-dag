@@ -21,6 +21,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -38,7 +39,6 @@ import com.asakusafw.lang.compiler.api.reference.DataModelReference;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
-import com.asakusafw.lang.compiler.model.graph.Operator;
 import com.asakusafw.lang.compiler.model.graph.OperatorInput;
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput;
 import com.asakusafw.runtime.core.Result;
@@ -55,25 +55,35 @@ public class ProjectOperatorGenerator extends CoreOperatorNodeGenerator {
     }
 
     @Override
-    protected NodeInfo generate(Context context, CoreOperator operator, ClassDescription targetClass) {
-        return ProjectOperatorGenerator.gen(context, operator, targetClass);
+    protected NodeInfo generate(Context context, CoreOperator operator, Supplier<? extends ClassDescription> namer) {
+        return ProjectOperatorGenerator.gen(context, operator, namer);
     }
 
-    static OperatorNodeInfo gen(Context context, Operator operator, ClassDescription target) {
+    static OperatorNodeInfo gen(Context context, CoreOperator operator, Supplier<? extends ClassDescription> namer) {
         checkPorts(operator, i -> i == 1, i -> i == 1);
         checkArgs(operator, i -> i == 0);
         OperatorUtil.checkOperatorPorts(operator, 1, 1);
 
+        return new OperatorNodeInfo(
+                context.cache(CacheKey.of(operator), () -> genClass(context, operator, namer.get())),
+                operator.getInputs().get(Project.ID_INPUT).getDataType(),
+                getDependencies(context, operator));
+    }
+
+    private static List<VertexElement> getDependencies(Context context, CoreOperator operator) {
+        return context.getDependencies(operator.getOutputs());
+    }
+
+    private static ClassData genClass(Context context, CoreOperator operator, ClassDescription target) {
         DataModelLoader loader = context.getDataModelLoader();
         DataModelReference inputType = loader.load(operator.getInputs().get(Project.ID_INPUT).getDataType());
         DataModelReference outputType = loader.load(operator.getOutputs().get(Project.ID_OUTPUT).getDataType());
-
-        List<VertexElement> dependencies = context.getDependencies(operator.getOutputs());
         List<PropertyMapping> mappings = ProjectionOperatorUtil.getPropertyMappings(loader, operator);
 
         ClassWriter writer = newWriter(target, Object.class, Result.class);
         FieldRef bufferField = defineField(writer, target, "buffer", typeOf(outputType));
 
+        List<VertexElement> dependencies = getDependencies(context, operator);
         Map<VertexElement, FieldRef> deps = defineDependenciesConstructor(target, writer, dependencies, method -> {
             method.visitVarInsn(Opcodes.ALOAD, 0);
             getNew(method, outputType.getDeclaration());
@@ -97,9 +107,6 @@ public class ProjectOperatorGenerator extends CoreOperatorNodeGenerator {
             method.visitVarInsn(Opcodes.ALOAD, 2);
             invokeResultAdd(method);
         });
-        return new OperatorNodeInfo(
-                new ClassData(target, writer::toByteArray),
-                inputType.getDeclaration(),
-                dependencies);
+        return new ClassData(target, writer::toByteArray);
     }
 }

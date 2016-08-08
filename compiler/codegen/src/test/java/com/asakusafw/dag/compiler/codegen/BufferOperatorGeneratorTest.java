@@ -16,21 +16,26 @@
 package com.asakusafw.dag.compiler.codegen;
 
 import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
-import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.Test;
 
+import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.compiler.model.graph.OutputNode;
 import com.asakusafw.dag.compiler.model.graph.VertexElement;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
+import com.asakusafw.dag.runtime.testing.MockKeyValueModel;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
+import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.runtime.core.Result;
 import com.asakusafw.runtime.testing.MockResult;
 
@@ -135,6 +140,36 @@ public class BufferOperatorGeneratorTest extends ClassGeneratorTestRoot {
         assertThat(m3.getResults().get(0).getKey(), is(5));
     }
 
+    /**
+     * cache - simple.
+     */
+    @Test
+    public void cache() {
+        ClassData a = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockDataModel.class), 2));
+        ClassData b = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockDataModel.class), 2));
+        assertThat(b, is(cacheOf(a)));
+    }
+
+    /**
+     * cache w/ different types.
+     */
+    @Test
+    public void cache_diff_type() {
+        ClassData a = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockDataModel.class), 2));
+        ClassData b = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockKeyValueModel.class), 2));
+        assertThat(b, is(not(cacheOf(a))));
+    }
+
+    /**
+     * cache w/ different counts.
+     */
+    @Test
+    public void cache_diff_count() {
+        ClassData a = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockDataModel.class), 2));
+        ClassData b = BufferOperatorGenerator.generate(context(), outputs(typeOf(MockDataModel.class), 3));
+        assertThat(b, is(not(cacheOf(a))));
+    }
+
     private void check(List<? extends Result<MockDataModel>> list, Consumer<Result<MockDataModel>> callback) {
         List<VertexElement> succs = new ArrayList<>();
         Class<?>[] parameterTypes = new Class<?>[list.size()];
@@ -144,12 +179,19 @@ public class BufferOperatorGeneratorTest extends ClassGeneratorTestRoot {
             parameterTypes[i] = Result.class;
             arguments[i] = list.get(i);
         }
-        ClassDescription generated = add(c -> new BufferOperatorGenerator().generate(succs, c));
+        ClassGeneratorContext context = context();
+        ClassDescription generated = BufferOperatorGenerator.get(context, succs);
         loading(generated, c -> {
             Constructor<?> ctor = c.getConstructor(list.stream().map(r -> Result.class).toArray(Class[]::new));
             @SuppressWarnings("unchecked")
             Result<MockDataModel> r = (Result<MockDataModel>) ctor.newInstance(list.stream().toArray());
             callback.accept(r);
         });
+    }
+
+    private List<VertexElement> outputs(TypeDescription type, int count) {
+        return IntStream.range(0, count)
+                .mapToObj(i -> new OutputNode("o" + i, typeOf(Result.class), type))
+                .collect(Collectors.toList());
     }
 }
