@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -31,6 +31,7 @@ import com.asakusafw.dag.api.processor.TaskProcessorContext;
 import com.asakusafw.dag.api.processor.TaskSchedule;
 import com.asakusafw.dag.api.processor.VertexProcessor;
 import com.asakusafw.dag.api.processor.VertexProcessorContext;
+import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Invariants;
 
@@ -47,7 +48,9 @@ public class JdbcOutputProcessor implements VertexProcessor {
      */
     public static final String INPUT_NAME = "input";
 
-    private IoCallable<TaskProcessor> lazy;
+    private volatile int maxConcurrency = -1;
+
+    private volatile IoCallable<TaskProcessor> lazy;
 
     private Spec spec;
 
@@ -92,9 +95,15 @@ public class JdbcOutputProcessor implements VertexProcessor {
         JdbcOutputDriver driver = spec.provider.apply(new JdbcContext.Basic(environment, stage::resolveUserVariables));
         driver.initialize();
 
+        this.maxConcurrency = driver.getMaxConcurrency();
         this.lazy = () -> new Task(spec.id, driver);
 
         return Optional.empty();
+    }
+
+    @Override
+    public int getMaxConcurrency() {
+        return maxConcurrency;
     }
 
     @Override

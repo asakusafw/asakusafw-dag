@@ -13,7 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.asakusafw.dag.compiler.jdbc;
+
+import com.asakusafw.lang.compiler.api.ExtensionInfo;
+
 /**
- * JDBC adapter API for Asakusa DAG.
+ * Information of this extension module.
+ * @since 0.2.0
  */
-package com.asakusafw.dag.runtime.jdbc;
+public class Info implements ExtensionInfo {
+
+    @Override
+    public String getName() {
+        return "dag.jdbc";
+    }
+}

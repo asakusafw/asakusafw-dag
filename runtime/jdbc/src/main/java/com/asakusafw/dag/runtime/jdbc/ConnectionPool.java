@@ -17,6 +17,7 @@ package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.util.OptionalInt;
 
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 
@@ -31,6 +32,14 @@ public interface ConnectionPool extends InterruptibleIo {
      * @return the JDBC URL
      */
     String getUrl();
+
+    /**
+     * Returns the max number of connections in this pool.
+     * @return the max number of connections
+     */
+    default OptionalInt size() {
+        return OptionalInt.empty();
+    }
 
     /**
      * Returns a handle of the connection pool entry.

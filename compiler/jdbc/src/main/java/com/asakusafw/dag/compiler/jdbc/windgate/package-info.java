@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * JDBC adapter API for Asakusa DAG.
+ * WindGate JDBC direct mode support for Asakusa DAG compiler.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.compiler.jdbc.windgate;

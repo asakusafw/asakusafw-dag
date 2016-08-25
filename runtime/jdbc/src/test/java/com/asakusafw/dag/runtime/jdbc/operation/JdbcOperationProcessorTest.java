@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
@@ -25,15 +25,15 @@ import org.junit.Test;
 
 import com.asakusafw.bridge.stage.StageInfo;
 import com.asakusafw.dag.api.processor.testing.VertexProcessorRunner;
-import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOutputDriver;
-import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
+import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
+import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.utils.common.Action;
 
 /**
- * Test for {@link JdbcOutputProcessor}.
+ * Test for {@link JdbcOperationProcessor}.
  */
-public class JdbcOutputProcessorTest extends JdbcDagTestRoot {
+public class JdbcOperationProcessorTest extends JdbcDagTestRoot {
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
 
@@ -43,52 +43,47 @@ public class JdbcOutputProcessorTest extends JdbcDagTestRoot {
      */
     @Test
     public void simple() throws Exception {
-        insert(999, null, "ERROR");
-        profile("testing", profile -> {
-            run(c -> c.bind("t", driver(profile)),
-                    new KsvModel(0, null, "Hello, world!"));
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        profile("testing", p -> {
+            run(c -> c.bind("t", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 2")));
         });
-        assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
+        assertThat(select(), contains(
+                new KsvModel(1, null, "Hello1"),
+                new KsvModel(3, null, "Hello3")));
     }
 
     /**
-     * multiple records.
+     * w/ multiple operations.
      * @throws Exception if failed
      */
     @Test
     public void multiple() throws Exception {
-        insert(999, null, "ERROR");
-        profile("testing", profile -> {
-            run(c -> c.bind("t", driver(profile)),
-                    new KsvModel(1, null, "Hello1"),
-                    new KsvModel(2, null, "Hello2"),
-                    new KsvModel(3, null, "Hello3"));
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        insert(4, null, "Hello4");
+        insert(5, null, "Hello5");
+        profile("testing", p -> {
+            run(c -> c
+                    .bind("t1", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 1"))
+                    .bind("t2", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 3"))
+                    .bind("t3", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 5")));
         });
         assertThat(select(), contains(
-                new KsvModel(1, null, "Hello1"),
                 new KsvModel(2, null, "Hello2"),
-                new KsvModel(3, null, "Hello3")));
+                new KsvModel(4, null, "Hello4")));
     }
 
-    private BasicJdbcOutputDriver driver(JdbcProfile profile) {
-        return new BasicJdbcOutputDriver(
-                profile,
-                "TRUNCATE TABLE KSV",
-                "INSERT INTO KSV (M_KEY, M_SORT, M_VALUE) VALUES (?, ?, ?)",
-                new KsvJdbcAdapter());
-    }
-
-    private void run(
-            Action<JdbcOutputProcessor, Exception> config,
-            KsvModel... values) throws IOException, InterruptedException {
+    private void run(Action<JdbcOperationProcessor, Exception> config) throws IOException, InterruptedException {
         VertexProcessorRunner runner = new VertexProcessorRunner(() -> {
-            JdbcOutputProcessor proc = new JdbcOutputProcessor();
+            JdbcOperationProcessor proc = new JdbcOperationProcessor();
             config.perform(proc);
             return proc;
         });
         try (JdbcEnvironment environment = environment()) {
             runner
-                .input(JdbcOutputProcessor.INPUT_NAME, (Object[]) values)
                 .resource(StageInfo.class, STAGE)
                 .resource(JdbcEnvironment.class, environment)
                 .run();

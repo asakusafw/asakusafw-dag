@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.Optionals;
@@ -44,7 +45,7 @@ public class JdbcEnvironment implements AutoCloseable {
 
     private final InterruptibleIo attached;
 
-    // FIXME pluggable implementations?
+    // TODO pluggable implementations?
 
     /**
      * Creates a new instance.

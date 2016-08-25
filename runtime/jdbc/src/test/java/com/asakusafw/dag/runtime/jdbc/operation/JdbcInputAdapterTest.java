@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;
 
-import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,6 +34,8 @@ import com.asakusafw.dag.api.processor.testing.MockVertexProcessorContext;
 import com.asakusafw.dag.runtime.adapter.ExtractOperation.Input;
 import com.asakusafw.dag.runtime.adapter.InputHandler;
 import com.asakusafw.dag.runtime.adapter.InputHandler.InputSession;
+import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
+import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;

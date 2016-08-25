@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * JDBC adapter API for Asakusa DAG.
+ * JDBC adapter operations for Asakusa DAG.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;

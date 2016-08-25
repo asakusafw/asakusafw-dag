@@ -22,6 +22,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
@@ -44,6 +45,8 @@ public class BasicConnectionPool implements ConnectionPool {
 
     private final Properties properties;
 
+    private final int size;
+
     private final Semaphore semaphore;
 
     private final Queue<Connection> cached = new LinkedList<>();
@@ -65,6 +68,7 @@ public class BasicConnectionPool implements ConnectionPool {
         this.url = url;
         this.properties = new Properties();
         this.properties.putAll(properties);
+        this.size = maxConnections;
         this.semaphore = new Semaphore(maxConnections);
     }
 
@@ -84,6 +88,11 @@ public class BasicConnectionPool implements ConnectionPool {
     }
 
     @Override
+    public OptionalInt size() {
+        return OptionalInt.of(size);
+    }
+
+    @Override
     public Handle acquire() throws IOException, InterruptedException {
         semaphore.acquire();
         boolean success = false;
@@ -96,6 +105,7 @@ public class BasicConnectionPool implements ConnectionPool {
                 while (cached.isEmpty() == false) {
                     connection = cached.poll();
                     if (connection.isClosed()) {
+                        connection.close();
                         connection = null;
                     } else {
                         break;

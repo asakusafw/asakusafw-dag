@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,6 +32,7 @@ import com.asakusafw.dag.runtime.adapter.ExtractOperation.Input;
 import com.asakusafw.dag.runtime.adapter.InputAdapter;
 import com.asakusafw.dag.runtime.adapter.InputHandler;
 import com.asakusafw.dag.runtime.adapter.InputHandler.InputSession;
+import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver.Partition;
 import com.asakusafw.dag.utils.common.Arguments;
 

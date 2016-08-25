@@ -15,89 +15,121 @@
  */
 package com.asakusafw.dag.runtime.jdbc.testing;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.MessageFormat;
-import java.util.Objects;
 
-@SuppressWarnings("javadoc")
-public class KsvModel {
+import com.asakusafw.dag.utils.common.Lang;
+import com.asakusafw.runtime.model.DataModel;
+import com.asakusafw.runtime.value.DecimalOption;
+import com.asakusafw.runtime.value.LongOption;
+import com.asakusafw.runtime.value.StringOption;
+import com.asakusafw.runtime.value.ValueOption;
 
-    private long key;
+@SuppressWarnings({ "javadoc", "deprecation" })
+public class KsvModel implements DataModel<KsvModel> {
 
-    private BigDecimal sort;
+    private final LongOption keyOption = new LongOption();
 
-    private String value;
+    private final DecimalOption sortOption = new DecimalOption();
+
+    private final StringOption valueOption = new StringOption();
 
     public KsvModel() {
         this(0, BigDecimal.ZERO, "");
     }
 
     public KsvModel(KsvModel copy) {
-        this(copy.key, copy.sort, copy.value);
+        copyFrom(copy);
     }
 
     public KsvModel(long key, BigDecimal sort, String value) {
-        this.key = key;
-        this.sort = sort;
-        this.value = value;
+        keyOption.modify(key);
+        sortOption.modify(sort);
+        valueOption.modify(value);
+    }
+
+    public LongOption getKeyOption() {
+        return keyOption;
+    }
+
+    public DecimalOption getSortOption() {
+        return sortOption;
+    }
+
+    public StringOption getValueOption() {
+        return valueOption;
     }
 
     public long getKey() {
-        return key;
+        return keyOption.get();
     }
 
     public void setKey(long key) {
-        this.key = key;
+        keyOption.modify(key);
     }
 
     public BigDecimal getSort() {
-        return sort;
+        return sortOption.or(null);
     }
 
     public void setSort(BigDecimal sort) {
-        this.sort = sort;
+        sortOption.modify(sort);
     }
 
     public String getValue() {
-        return value;
+        return valueOption.or((String) null);
     }
 
     public void setValue(String value) {
-        this.value = value;
+        valueOption.modify(value);
+    }
+
+    @Override
+    public void reset() {
+        try {
+            for (Method method : getClass().getMethods()) {
+                if (method.getParameterCount() != 0
+                        || ValueOption.class.isAssignableFrom(method.getReturnType()) == false) {
+                    continue;
+                }
+                ValueOption<?> value = (ValueOption<?>) method.invoke(this);
+                value.setNull();
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Override
+    public final void copyFrom(KsvModel other) {
+        try {
+            for (Method method : getClass().getMethods()) {
+                if (method.getParameterCount() != 0
+                        || ValueOption.class.isAssignableFrom(method.getReturnType()) == false) {
+                    continue;
+                }
+                ValueOption from = (ValueOption<?>) method.invoke(other);
+                ValueOption to = (ValueOption<?>) method.invoke(this);
+                to.copyFrom(from);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Long.hashCode(key);
-        result = prime * result + Objects.hashCode(sort);
-        result = prime * result + Objects.hashCode(value);
-        return result;
+        return Lang.hashCode(keyOption, sortOption, valueOption);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        KsvModel other = (KsvModel) obj;
-        if (key != other.key) {
-            return false;
-        }
-        if (!Objects.equals(sort, other.sort)) {
-            return false;
-        }
-        if (!Objects.equals(value, other.value)) {
-            return false;
-        }
-        return true;
+        return Lang.equals(this, obj,
+                KsvModel::getKeyOption,
+                KsvModel::getSortOption,
+                KsvModel::getValueOption);
     }
 
     @Override

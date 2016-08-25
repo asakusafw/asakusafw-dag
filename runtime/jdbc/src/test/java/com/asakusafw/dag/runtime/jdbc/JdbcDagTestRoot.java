@@ -32,6 +32,8 @@ import org.junit.Rule;
 import com.asakusafw.dag.api.processor.ObjectReader;
 import com.asakusafw.dag.api.processor.ObjectWriter;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
+import com.asakusafw.dag.runtime.jdbc.operation.JdbcContext;
+import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.testing.H2Resource;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.utils.common.Action;

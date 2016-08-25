@@ -13,7 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * JDBC adapter API for Asakusa DAG.
- */
 package com.asakusafw.dag.runtime.jdbc;
+
+import java.io.IOException;
+
+/**
+ * Processes operations via JDBC.
+ * @since 0.2.0
+ */
+@FunctionalInterface
+public interface JdbcOperationDriver {
+
+    /**
+     * Performs this operation.
+     * @throws IOException if I/O error was occurred while performing the operation
+     * @throws InterruptedException if interrupted while performing the operation
+     */
+    void perform() throws IOException, InterruptedException;
+}

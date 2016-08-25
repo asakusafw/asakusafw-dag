@@ -30,6 +30,14 @@ public class JdbcProfile {
 
     private final ConnectionPool connectionPool;
 
+    private int fetchSize;
+
+    private int insertSize;
+
+    private int maxInputConcurrency;
+
+    private int maxOutputConcurrency;
+
     /**
      * Creates a new instance.
      * @param name the profile name
@@ -40,6 +48,29 @@ public class JdbcProfile {
         Arguments.requireNonNull(connectionPool);
         this.name = name;
         this.connectionPool = connectionPool;
+    }
+
+    /**
+     * Creates a new instance.
+     * @param name the profile name
+     * @param connectionPool the connection pool for the profile
+     * @param fetchSize the number of bulk fetch records, or {@code <= 0} if it is not defined
+     * @param insertSize the number of bulk insert records, or {@code <= 0} if it is not defined
+     * @param maxInputConcurrency the number of threads per input operation, or {@code <= 0} if it is not defined
+     * @param maxOutputConcurrency the number of threads per output operation, or {@code <= 0} if it is not defined
+     */
+    public JdbcProfile(
+            String name, ConnectionPool connectionPool,
+            int fetchSize, int insertSize,
+            int maxInputConcurrency, int maxOutputConcurrency) {
+        Arguments.requireNonNull(name);
+        Arguments.requireNonNull(connectionPool);
+        this.name = name;
+        this.connectionPool = connectionPool;
+        this.fetchSize = fetchSize;
+        this.insertSize = insertSize;
+        this.maxInputConcurrency = maxInputConcurrency;
+        this.maxOutputConcurrency = maxOutputConcurrency;
     }
 
     /**
@@ -65,7 +96,7 @@ public class JdbcProfile {
      * @return the input fetch size, or empty if it is not specified
      */
     public OptionalInt getFetchSize() {
-        return OptionalInt.empty();
+        return getOptionalSize(fetchSize);
     }
 
     /**
@@ -73,7 +104,27 @@ public class JdbcProfile {
      * @return the input fetch size, or empty if it is not specified
      */
     public OptionalInt getInsertSize() {
-        return OptionalInt.empty();
+        return getOptionalSize(insertSize);
+    }
+
+    /**
+     * Returns the max number of threads for individual input operations.
+     * @return max input concurrency, or empty if it is not specified
+     */
+    public OptionalInt getMaxInputConcurrency() {
+        return getOptionalSize(maxInputConcurrency);
+    }
+
+    /**
+     * Returns the max number of threads for individual output operations.
+     * @return max output concurrency, or empty if it is not specified
+     */
+    public OptionalInt getMaxOutputConcurrency() {
+        return getOptionalSize(maxOutputConcurrency);
+    }
+
+    private static OptionalInt getOptionalSize(int size) {
+        return size <= 0 ? OptionalInt.empty() : OptionalInt.of(size);
     }
 
     @Override

@@ -23,14 +23,25 @@ import com.asakusafw.dag.api.processor.ObjectWriter;
  * Processes output into JDBC.
  * @since 0.2.0
  */
+@FunctionalInterface
 public interface JdbcOutputDriver {
+
+    /**
+     * Returns the max number of threads to write objects into the target resource.
+     * @return the max concurrency, or {@code -1} if it is not defined
+     */
+    default int getMaxConcurrency() {
+        return 1;
+    }
 
     /**
      * Initializes the target resource.
      * @throws IOException if I/O error was occurred while initializing the target resource
      * @throws InterruptedException if interrupted while initializing the target resource
      */
-    void initialize() throws IOException, InterruptedException;
+    default void initialize() throws IOException, InterruptedException {
+        return;
+    }
 
     /**
      * Creates a new writer which accepts each output object.

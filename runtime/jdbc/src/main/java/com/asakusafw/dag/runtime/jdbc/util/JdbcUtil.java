@@ -16,6 +16,7 @@
 package com.asakusafw.dag.runtime.jdbc.util;
 
 import java.io.IOException;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.slf4j.Logger;
@@ -23,6 +24,9 @@ import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.RunnableWithException;
+import com.asakusafw.runtime.value.Date;
+import com.asakusafw.runtime.value.DateTime;
+import com.asakusafw.runtime.value.DateUtil;
 
 /**
  * Utilities about JDBC.
@@ -62,5 +66,45 @@ public final class JdbcUtil {
                 throw wrap(e);
             }
         };
+    }
+
+    /**
+     * Sets a {@link Date} value to placeholder.
+     * @param statement the target statement
+     * @param index the placeholder index
+     * @param value the target value
+     * @param valueBuffer a value buffer
+     * @param calendarBuffer a calendar buffer
+     * @throws SQLException if error was occurred
+     */
+    public static void setParameter(
+            PreparedStatement statement,
+            int index,
+            Date value,
+            java.sql.Date valueBuffer,
+            java.util.Calendar calendarBuffer) throws SQLException {
+        DateUtil.setDayToCalendar(value.getElapsedDays(), calendarBuffer);
+        valueBuffer.setTime(calendarBuffer.getTimeInMillis());
+        statement.setDate(index, valueBuffer, calendarBuffer);
+    }
+
+    /**
+     * Sets a {@link Date} value to placeholder.
+     * @param statement the target statement
+     * @param index the placeholder index
+     * @param value the target value
+     * @param valueBuffer a value buffer
+     * @param calendarBuffer a calendar buffer
+     * @throws SQLException if error was occurred
+     */
+    public static void setParameter(
+            PreparedStatement statement,
+            int index,
+            DateTime value,
+            java.sql.Timestamp valueBuffer,
+            java.util.Calendar calendarBuffer) throws SQLException {
+        DateUtil.setSecondToCalendar(value.getElapsedSeconds(), calendarBuffer);
+        valueBuffer.setTime(calendarBuffer.getTimeInMillis());
+        statement.setTimestamp(index, valueBuffer, calendarBuffer);
     }
 }
