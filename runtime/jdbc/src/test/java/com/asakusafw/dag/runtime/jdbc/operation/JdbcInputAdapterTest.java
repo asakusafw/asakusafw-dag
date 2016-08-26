@@ -54,15 +54,14 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
     @Test
     public void simple() throws Exception {
         insert(0, null, "Hello, world!");
-        try (JdbcEnvironment environment = environment("testing")) {
-            MockVertexProcessorContext vc = new MockVertexProcessorContext()
-                    .withResource(StageInfo.class, STAGE)
-                    .withResource(JdbcEnvironment.class, environment);
-            try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
-                adapter.bind("t", driver(environment.getProfile("testing")));
-                adapter.initialize();
-                assertThat(collect(adapter), contains(new KsvModel(0, null, "Hello, world!")));
-            }
+        JdbcEnvironment environment = environment("testing");
+        MockVertexProcessorContext vc = new MockVertexProcessorContext()
+                .withResource(StageInfo.class, STAGE)
+                .withResource(JdbcEnvironment.class, environment);
+        try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
+            adapter.bind("t", driver(environment.getProfile("testing")));
+            adapter.initialize();
+            assertThat(collect(adapter), contains(new KsvModel(0, null, "Hello, world!")));
         }
     }
 
@@ -75,18 +74,17 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        try (JdbcEnvironment environment = environment("testing")) {
-            MockVertexProcessorContext vc = new MockVertexProcessorContext()
-                    .withResource(StageInfo.class, STAGE)
-                    .withResource(JdbcEnvironment.class, environment);
-            try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
-                adapter.bind("t", driver(environment.getProfile("testing")));
-                adapter.initialize();
-                assertThat(collect(adapter), contains(
-                        new KsvModel(1, null, "Hello1"),
-                        new KsvModel(2, null, "Hello2"),
-                        new KsvModel(3, null, "Hello3")));
-            }
+        JdbcEnvironment environment = environment("testing");
+        MockVertexProcessorContext vc = new MockVertexProcessorContext()
+                .withResource(StageInfo.class, STAGE)
+                .withResource(JdbcEnvironment.class, environment);
+        try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
+            adapter.bind("t", driver(environment.getProfile("testing")));
+            adapter.initialize();
+            assertThat(collect(adapter), contains(
+                    new KsvModel(1, null, "Hello1"),
+                    new KsvModel(2, null, "Hello2"),
+                    new KsvModel(3, null, "Hello3")));
         }
     }
 

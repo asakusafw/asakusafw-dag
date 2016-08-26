@@ -115,13 +115,11 @@ public class WindGateJdbcOutputProcessorGeneratorTest extends JdbcDagCompilerTes
     private void run(ClassData data, KsvModel... values) {
         add(data, c -> {
             VertexProcessorRunner runner = new VertexProcessorRunner(() -> (VertexProcessor) c.newInstance());
-            try (JdbcEnvironment environment = environment(PROFILE)) {
-                runner
-                    .input(JdbcOutputProcessor.INPUT_NAME, (Object[]) values)
-                    .resource(StageInfo.class, STAGE)
-                    .resource(JdbcEnvironment.class, environment)
-                    .run();
-            }
+            runner
+                .input(JdbcOutputProcessor.INPUT_NAME, (Object[]) values)
+                .resource(StageInfo.class, STAGE)
+                .resource(JdbcEnvironment.class, environment(PROFILE))
+                .run();
         });
     }
 }

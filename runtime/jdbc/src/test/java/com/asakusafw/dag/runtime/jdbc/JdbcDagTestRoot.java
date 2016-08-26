@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Rule;
+import org.junit.rules.ExternalResource;
 
 import com.asakusafw.dag.api.processor.ObjectReader;
 import com.asakusafw.dag.api.processor.ObjectWriter;
@@ -37,6 +38,7 @@ import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.testing.H2Resource;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.utils.common.Action;
+import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
 import com.asakusafw.runtime.util.VariableTable;
 
@@ -53,12 +55,41 @@ public abstract class JdbcDagTestRoot {
         .with("CREATE TABLE KSV(M_KEY BIGINT, M_SORT DECIMAL(18,2), M_VALUE VARCHAR(256))");
 
     /**
+     * Closes resources.
+     */
+    @Rule
+    public final ExternalResource autoClose = new ExternalResource() {
+        @Override
+        protected void after() {
+            try {
+                closer.close();
+            } catch (IOException | InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
+    };
+
+    final Closer closer = new Closer();
+
+    /**
+     * Adds a resource to be closed after this test case.
+     * @param resource the resource
+     * @return the resource
+     */
+    public <T extends InterruptibleIo> T bless(T resource) {
+        if (resource != null) {
+            closer.add(resource);
+        }
+        return resource;
+    }
+
+    /**
      * Creates a new pool.
      * @param connections the max number of connections
      * @return the created connection pool
      */
     public BasicConnectionPool pool(int connections) {
-        return new BasicConnectionPool(h2.getJdbcUrl(), Collections.emptyMap(), connections);
+        return bless(new BasicConnectionPool(h2.getJdbcUrl(), Collections.emptyMap(), connections));
     }
 
     /**
@@ -67,15 +98,11 @@ public abstract class JdbcDagTestRoot {
      * @return the environment
      */
     public JdbcEnvironment environment(String... profileNames) {
-        try (Closer closer = new Closer()) {
-            List<JdbcProfile> profiles = new ArrayList<>();
-            for (String name : profileNames) {
-                profiles.add(new JdbcProfile(name, closer.add(pool(1))));
-            }
-            return new JdbcEnvironment(profiles, closer.move());
-        } catch (IOException | InterruptedException e) {
-            throw new AssertionError(e);
+        List<JdbcProfile> profiles = new ArrayList<>();
+        for (String name : profileNames) {
+            profiles.add(new JdbcProfile(name, pool(1)));
         }
+        return new JdbcEnvironment(profiles);
     }
 
     /**
@@ -96,8 +123,8 @@ public abstract class JdbcDagTestRoot {
     public void context(String profileName, Map<String, String> variables, Action<JdbcContext, ?> action) {
         VariableTable vs = new VariableTable();
         vs.defineVariables(variables);
-        try (JdbcEnvironment environment = environment(profileName)) {
-            action.perform(new JdbcContext.Basic(environment, vs::parse));
+        try {
+            action.perform(new JdbcContext.Basic(environment(profileName), vs::parse));
         } catch (Exception e) {
             throw new AssertionError(e);
         }

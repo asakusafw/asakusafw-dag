@@ -85,12 +85,10 @@ public class WindGateJdbcTruncateProcessorGeneratorTest extends JdbcDagCompilerT
     private void run(ClassData data) {
         add(data, c -> {
             VertexProcessorRunner runner = new VertexProcessorRunner(() -> (VertexProcessor) c.newInstance());
-            try (JdbcEnvironment environment = environment(PROFILE)) {
-                runner
-                    .resource(StageInfo.class, STAGE)
-                    .resource(JdbcEnvironment.class, environment)
-                    .run();
-            }
+            runner
+                .resource(StageInfo.class, STAGE)
+                .resource(JdbcEnvironment.class, environment(PROFILE))
+                .run();
         });
     }
 }

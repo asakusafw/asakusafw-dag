@@ -15,7 +15,6 @@
  */
 package com.asakusafw.dag.runtime.jdbc.operation;
 
-import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,20 +29,17 @@ import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.utils.common.Arguments;
-import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.Optionals;
 
 /**
  * The JDBC adapter environment.
  * @since 0.2.0
  */
-public class JdbcEnvironment implements AutoCloseable {
+public class JdbcEnvironment {
 
     static final Logger LOG = LoggerFactory.getLogger(JdbcEnvironment.class);
 
     private final Map<String, JdbcProfile> profiles;
-
-    private final InterruptibleIo attached;
 
     // TODO pluggable implementations?
 
@@ -52,15 +48,6 @@ public class JdbcEnvironment implements AutoCloseable {
      * @param profiles the JDBC profiles in this environment
      */
     public JdbcEnvironment(Collection<? extends JdbcProfile> profiles) {
-        this(profiles, null);
-    }
-
-    /**
-     * Creates a new instance.
-     * @param profiles the JDBC profiles in this environment
-     * @param attached the attached resources (nullable)
-     */
-    public JdbcEnvironment(Collection<? extends JdbcProfile> profiles, InterruptibleIo attached) {
         Arguments.requireNonNull(profiles);
         this.profiles = profiles.stream()
                 .sequential()
@@ -74,7 +61,6 @@ public class JdbcEnvironment implements AutoCloseable {
                                 },
                                 LinkedHashMap::new),
                         Collections::unmodifiableMap));
-        this.attached = attached;
     }
 
     /**
@@ -96,12 +82,5 @@ public class JdbcEnvironment implements AutoCloseable {
      */
     public Optional<JdbcProfile> findProfile(String profileName) {
         return Optionals.get(profiles, profileName);
-    }
-
-    @Override
-    public void close() throws IOException, InterruptedException {
-        if (attached != null) {
-            attached.close();
-        }
     }
 }

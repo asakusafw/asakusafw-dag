@@ -100,10 +100,10 @@ public class JdbcProfile {
     }
 
     /**
-     * Returns the input fetch size.
-     * @return the input fetch size, or empty if it is not specified
+     * Returns the batch insert size.
+     * @return the batch insert size, or empty if it is not specified
      */
-    public OptionalInt getInsertSize() {
+    public OptionalInt getBatchInsertSize() {
         return getOptionalSize(insertSize);
     }
 

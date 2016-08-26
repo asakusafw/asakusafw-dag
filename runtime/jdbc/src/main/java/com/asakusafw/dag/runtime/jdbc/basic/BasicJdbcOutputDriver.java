@@ -86,7 +86,7 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
 
     @Override
     public ObjectWriter open() throws IOException, InterruptedException {
-        int windowSize = profile.getInsertSize().orElse(DEFAULT_INSERT_SIZE);
+        int windowSize = profile.getBatchInsertSize().orElse(DEFAULT_INSERT_SIZE);
         try (Closer closer = new Closer()) {
             ConnectionPool.Handle handle = closer.add(profile.acquire());
             PreparedStatement statement = handle.getConnection().prepareStatement(sql);

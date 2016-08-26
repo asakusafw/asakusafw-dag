@@ -117,11 +117,10 @@ public class WindGateJdbcInputAdapterGeneratorTest extends JdbcDagCompilerTestRo
     private List<KsvModel> run(ClassData data) {
         List<KsvModel> results = new ArrayList<>();
         add(data, c -> {
-            try (JdbcEnvironment environment = environment(PROFILE);
-                    JdbcInputAdapter adapter = (JdbcInputAdapter) c.getConstructor(VertexProcessorContext.class)
-                            .newInstance(new MockVertexProcessorContext()
-                                    .withResource(StageInfo.class, STAGE)
-                                    .withResource(JdbcEnvironment.class, environment))) {
+            try (JdbcInputAdapter adapter = (JdbcInputAdapter) c.getConstructor(VertexProcessorContext.class)
+                    .newInstance(new MockVertexProcessorContext()
+                            .withResource(StageInfo.class, STAGE)
+                            .withResource(JdbcEnvironment.class, environment(PROFILE)))) {
                 adapter.initialize();
                 results.addAll(collect(adapter));
             }

@@ -18,7 +18,6 @@ package com.asakusafw.dag.runtime.jdbc.operation;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
-import java.io.IOException;
 import java.util.Collections;
 
 import org.junit.Test;
@@ -82,20 +81,16 @@ public class JdbcOutputProcessorTest extends JdbcDagTestRoot {
                 new KsvJdbcAdapter());
     }
 
-    private void run(
-            Action<JdbcOutputProcessor, Exception> config,
-            KsvModel... values) throws IOException, InterruptedException {
+    private void run(Action<JdbcOutputProcessor, Exception> config, KsvModel... values) {
         VertexProcessorRunner runner = new VertexProcessorRunner(() -> {
             JdbcOutputProcessor proc = new JdbcOutputProcessor();
             config.perform(proc);
             return proc;
         });
-        try (JdbcEnvironment environment = environment()) {
-            runner
-                .input(JdbcOutputProcessor.INPUT_NAME, (Object[]) values)
-                .resource(StageInfo.class, STAGE)
-                .resource(JdbcEnvironment.class, environment)
-                .run();
-        }
+        runner
+            .input(JdbcOutputProcessor.INPUT_NAME, (Object[]) values)
+            .resource(StageInfo.class, STAGE)
+            .resource(JdbcEnvironment.class, environment())
+            .run();
     }
 }
