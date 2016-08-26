@@ -38,9 +38,9 @@ import com.asakusafw.dag.utils.common.Optionals;
  * WindGate adapter for JDBC operations.
  * @since 0.2.0
  */
-public final class WindGateDirect {
+public final class WindGateJdbcDirect {
 
-    private WindGateDirect() {
+    private WindGateJdbcDirect() {
         return;
     }
 

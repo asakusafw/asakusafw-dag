@@ -17,7 +17,7 @@ package com.asakusafw.dag.compiler.jdbc.windgate;
 
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,7 +32,7 @@ import com.asakusafw.dag.compiler.jdbc.PreparedStatementAdapterGenerator;
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.PreparedStatementAdapter;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcOutputProcessor;
-import com.asakusafw.dag.runtime.jdbc.util.WindGateDirect;
+import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.dag.utils.common.Tuple;
@@ -41,7 +41,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
- * Generates {@link JdbcOutputProcessor} using {@link WindGateDirect} API.
+ * Generates {@link JdbcOutputProcessor} using {@link WindGateJdbcDirect} API.
  * @since 0.2.0
  */
 public final class WindGateJdbcOutputProcessorGenerator {
@@ -57,74 +57,60 @@ public final class WindGateJdbcOutputProcessorGenerator {
     /**
      * Generates {@link JdbcOutputProcessor} class.
      * @param context the current context
-     * @param spec the target input spec
+     * @param spec the target operation spec
      * @return the generated class data
      */
     public static ClassData generate(ClassGeneratorContext context, Spec spec) {
         Arguments.requireNonNull(context);
         Arguments.requireNonNull(spec);
-        return generate(context, Arrays.asList(spec));
+        return generate(context, spec, context.getClassName(CATEGORY, HINT));
     }
 
     /**
      * Generates {@link JdbcOutputProcessor} class.
      * @param context the current context
-     * @param specs the target input specs
-     * @return the generated class data
-     */
-    public static ClassData generate(ClassGeneratorContext context, List<Spec> specs) {
-        Arguments.requireNonNull(context);
-        Arguments.requireNonNull(specs);
-        return generate(context, specs, context.getClassName(CATEGORY, HINT));
-    }
-
-    /**
-     * Generates {@link JdbcOutputProcessor} class.
-     * @param context the current context
-     * @param specs the target input specs
+     * @param spec the target operation spec
      * @param target the target class
      * @return the generated class data
      */
-    public static ClassData generate(ClassGeneratorContext context, List<Spec> specs, ClassDescription target) {
+    public static ClassData generate(ClassGeneratorContext context, Spec spec, ClassDescription target) {
         Arguments.requireNonNull(context);
-        Arguments.requireNonNull(specs);
+        Arguments.requireNonNull(spec);
         ClassWriter writer = newWriter(target, JdbcOutputProcessor.class);
         defineEmptyConstructor(writer, JdbcOutputProcessor.class, v -> {
             LocalVarRef self = new LocalVarRef(Opcodes.ALOAD, 0);
-            for (Spec spec : specs) {
-                self.load(v);
-                getConst(v, spec.id);
+            self.load(v);
+            getConst(v, spec.id);
 
-                getConst(v, spec.profileName);
-                getConst(v, spec.tableName);
-                getList(v, Lang.project(spec.columnMappings, Tuple::left));
-                getConst(v, spec.customTruncate);
-                getNew(v, context.addClassFile(PreparedStatementAdapterGenerator.generate(
-                        context,
-                        new PreparedStatementAdapterGenerator.Spec(
-                                spec.dataType,
-                                Lang.project(spec.columnMappings, Tuple::right)))));
-                getArray(v, spec.options.stream().toArray(String[]::new));
+            getConst(v, spec.profileName);
+            getConst(v, spec.tableName);
+            getList(v, Lang.project(spec.columnMappings, Tuple::left));
+            getConst(v, spec.customTruncate);
+            getNew(v, context.addClassFile(PreparedStatementAdapterGenerator.generate(
+                    context,
+                    new PreparedStatementAdapterGenerator.Spec(
+                            spec.dataType,
+                            Lang.project(spec.columnMappings, Tuple::right)))));
+            getArray(v, spec.options.stream().toArray(String[]::new));
 
-                v.visitMethodInsn(Opcodes.INVOKESTATIC,
-                        typeOf(WindGateDirect.class).getInternalName(),
-                        "output",
-                        Type.getMethodDescriptor(typeOf(Function.class),
-                                typeOf(String.class), // profileName
-                                typeOf(String.class), // tableName
-                                typeOf(List.class), // columnNames
-                                typeOf(String.class), // customTruncate
-                                typeOf(PreparedStatementAdapter.class), // jdbcAdapter
-                                typeOf(String[].class)), // options
-                        false);
+            v.visitMethodInsn(Opcodes.INVOKESTATIC,
+                    typeOf(WindGateJdbcDirect.class).getInternalName(),
+                    "output",
+                    Type.getMethodDescriptor(typeOf(Function.class),
+                            typeOf(String.class), // profileName
+                            typeOf(String.class), // tableName
+                            typeOf(List.class), // columnNames
+                            typeOf(String.class), // customTruncate
+                            typeOf(PreparedStatementAdapter.class), // jdbcAdapter
+                            typeOf(String[].class)), // options
+                    false);
 
-                v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
-                        target.getInternalName(), "bind", //$NON-NLS-1$
-                        Type.getMethodDescriptor(typeOf(JdbcOutputProcessor.class),
-                                typeOf(String.class), typeOf(Function.class)),
-                        false);
-                v.visitInsn(Opcodes.POP);
-            }
+            v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                    target.getInternalName(), "bind", //$NON-NLS-1$
+                    Type.getMethodDescriptor(typeOf(JdbcOutputProcessor.class),
+                            typeOf(String.class), typeOf(Function.class)),
+                    false);
+            v.visitInsn(Opcodes.POP);
         });
         writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
@@ -132,6 +118,7 @@ public final class WindGateJdbcOutputProcessorGenerator {
 
     /**
      * Represents an operation spec for {@link JdbcOutputProcessor}.
+     * @since 0.2.0
      */
     public static class Spec {
 
@@ -152,6 +139,21 @@ public final class WindGateJdbcOutputProcessorGenerator {
         /**
          * Creates a new instance.
          * @param id the input ID
+         * @param model the output model
+         */
+        public Spec(String id, WindGateJdbcOutputModel model) {
+            this(id,
+                    model.getDataType(),
+                    model.getProfileName(),
+                    model.getTableName(),
+                    model.getColumnMappings(),
+                    model.getCustomTruncate(),
+                    model.getOptions());
+        }
+
+        /**
+         * Creates a new instance.
+         * @param id the input ID
          * @param dataType the data type
          * @param profileName the profile name
          * @param tableName the table name
@@ -166,7 +168,7 @@ public final class WindGateJdbcOutputProcessorGenerator {
                 String tableName,
                 List<Tuple<String, PropertyName>> columnMappings,
                 String customTruncate,
-                List<String> options) {
+                Collection<String> options) {
             Arguments.requireNonNull(id);
             Arguments.requireNonNull(dataType);
             Arguments.requireNonNull(profileName);

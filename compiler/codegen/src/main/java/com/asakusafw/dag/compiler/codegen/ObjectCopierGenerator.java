@@ -39,6 +39,8 @@ public final class ObjectCopierGenerator {
 
     private static final String CATEGORY = "util"; //$NON-NLS-1$
 
+    private static final String SUFFIX = "Copier"; //$NON-NLS-1$
+
     private ObjectCopierGenerator() {
         return;
     }
@@ -63,7 +65,7 @@ public final class ObjectCopierGenerator {
      */
     public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
         return context.cache(new Key(type), () -> {
-            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "Copier")); //$NON-NLS-1$
+            ClassDescription target = context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(type, SUFFIX));
             return generate0(type, target);
         });
     }

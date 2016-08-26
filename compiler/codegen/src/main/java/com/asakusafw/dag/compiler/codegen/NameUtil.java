@@ -13,25 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.compiler.jdbc;
+package com.asakusafw.dag.compiler.codegen;
 
 import java.util.Optional;
 
+import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
-final class Util {
+/**
+ * Utilities about name.
+ * @since 0.2.0
+ */
+public final class NameUtil {
 
-    private Util() {
+    private NameUtil() {
         return;
     }
 
-    static String getSimpleNameHint(TypeDescription type, String suffix) {
+    /**
+     * Returns a simple name of the target type.
+     * @param type the target type
+     * @return the simple name, or {@code null} if the type does not have a valid simple name
+     */
+    public static String getSimpleName(TypeDescription type) {
+        Arguments.requireNonNull(type);
         return Optional.of(type)
                 .filter(ClassDescription.class::isInstance)
                 .map(ClassDescription.class::cast)
                 .map(ClassDescription::getSimpleName)
-                .map(s -> s + suffix)
                 .orElse(null);
+    }
+
+    /**
+     * Returns a simple name hint for the target type.
+     * @param type the target type
+     * @param suffix the name suffix
+     * @return the simple name hint, or {@code null} if the type does not have a valid simple name
+     */
+    public static String getSimpleNameHint(TypeDescription type, String suffix) {
+        Arguments.requireNonNull(type);
+        Arguments.requireNonNull(suffix);
+        return Optionals.of(getSimpleName(type)).map(s -> s + suffix).orElse(null);
     }
 }

@@ -34,8 +34,17 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw.lang.compiler</groupId>
+      <artifactId>asakusa-compiler-extension-windgate</artifactId>
+      <version>${asakusafw-lang.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw</groupId>
       <artifactId>asakusa-runtime</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-windgate-vocabulary</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>

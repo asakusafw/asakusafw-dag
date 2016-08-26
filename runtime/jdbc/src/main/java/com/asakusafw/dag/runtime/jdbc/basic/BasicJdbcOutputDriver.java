@@ -74,7 +74,7 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
     @Override
     public int getMaxConcurrency() {
         return profile.getMaxOutputConcurrency()
-                .orElseGet(JdbcOutputDriver.super::getMaxConcurrency);
+                .orElse(JdbcOutputDriver.super.getMaxConcurrency());
     }
 
     @Override

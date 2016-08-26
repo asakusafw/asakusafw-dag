@@ -25,6 +25,7 @@ import com.asakusafw.dag.utils.common.Invariants;
 /**
  * Represents {@link Supplier} reference.
  */
+@FunctionalInterface
 public interface SupplierInfo extends Serializable {
 
     /**

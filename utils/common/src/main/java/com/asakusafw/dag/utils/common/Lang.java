@@ -23,6 +23,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -182,6 +183,28 @@ public final class Lang {
         Objects.requireNonNull(action);
         for (T value : iterable) {
             action.perform(value);
+        }
+    }
+
+    /**
+     * Iterates elements.
+     * @param <T> the element type
+     * @param <E> the throwable exception type
+     * @param seed the seed element
+     * @param condition the iterate condition
+     * @param next the next element generator
+     * @param action the action for each element
+     * @throws E if an exception was occurred
+     * @since 0.2.0
+     */
+    public static <T, E extends Exception> void forEach(
+            T seed, Predicate<? super T> condition, Function<? super T, ? extends T> next,
+            Action<? super T, ? extends E> action) throws E {
+        Objects.requireNonNull(condition);
+        Objects.requireNonNull(next);
+        Objects.requireNonNull(action);
+        for (T v = seed; condition.test(v); v = next.apply(v)) {
+            action.perform(v);
         }
     }
 

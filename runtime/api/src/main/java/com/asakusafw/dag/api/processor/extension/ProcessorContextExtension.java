@@ -29,6 +29,7 @@ import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
 /**
  * An extension point for {@link ProcessorContext}.
  */
+@FunctionalInterface
 public interface ProcessorContextExtension {
 
     /**

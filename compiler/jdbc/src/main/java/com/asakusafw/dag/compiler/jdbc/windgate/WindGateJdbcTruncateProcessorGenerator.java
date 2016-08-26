@@ -18,6 +18,7 @@ package com.asakusafw.dag.compiler.jdbc.windgate;
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -31,12 +32,14 @@ import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcOperationProcessor;
-import com.asakusafw.dag.runtime.jdbc.util.WindGateDirect;
+import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Lang;
+import com.asakusafw.dag.utils.common.Tuple;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
 /**
- * Generates {@link JdbcOperationProcessor} using {@link WindGateDirect} API.
+ * Generates {@link JdbcOperationProcessor} using {@link WindGateJdbcDirect} API.
  * @since 0.2.0
  */
 public final class WindGateJdbcTruncateProcessorGenerator {
@@ -97,7 +100,7 @@ public final class WindGateJdbcTruncateProcessorGenerator {
                 getArray(v, spec.options.stream().toArray(String[]::new));
 
                 v.visitMethodInsn(Opcodes.INVOKESTATIC,
-                        typeOf(WindGateDirect.class).getInternalName(),
+                        typeOf(WindGateJdbcDirect.class).getInternalName(),
                         "truncate",
                         Type.getMethodDescriptor(typeOf(Function.class),
                                 typeOf(String.class), // profileName
@@ -121,6 +124,7 @@ public final class WindGateJdbcTruncateProcessorGenerator {
 
     /**
      * Represents an operation spec for {@link JdbcOperationDriver} for truncating tables.
+     * @since 0.2.0
      */
     public static class Spec {
 
@@ -138,10 +142,24 @@ public final class WindGateJdbcTruncateProcessorGenerator {
 
         /**
          * Creates a new instance.
-         * @param id the input ID
+         * @param id the output ID
+         * @param model the output model
+         */
+        public Spec(String id, WindGateJdbcOutputModel model) {
+            this(id,
+                    model.getProfileName(),
+                    model.getTableName(),
+                    Lang.project(model.getColumnMappings(), Tuple::left),
+                    model.getCustomTruncate(),
+                    model.getOptions());
+        }
+
+        /**
+         * Creates a new instance.
+         * @param id the output ID
          * @param profileName the profile name
          * @param tableName the table name
-         * @param columnNames the column mappings
+         * @param columnNames the column names
          * @param customTruncate the custom truncate statement (nullable)
          * @param options the WindGate options
          */
@@ -151,7 +169,7 @@ public final class WindGateJdbcTruncateProcessorGenerator {
                 String tableName,
                 List<String> columnNames,
                 String customTruncate,
-                List<String> options) {
+                Collection<String> options) {
             Arguments.requireNonNull(id);
             Arguments.requireNonNull(profileName);
             Arguments.requireNonNull(tableName);

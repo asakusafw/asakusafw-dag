@@ -36,6 +36,7 @@ import org.objectweb.asm.Type;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.FieldRef;
 import com.asakusafw.dag.compiler.codegen.AsmUtil.LocalVarRef;
 import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
+import com.asakusafw.dag.compiler.codegen.NameUtil;
 import com.asakusafw.dag.compiler.codegen.PropertyTypeKind;
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.ResultSetAdapter;
@@ -71,7 +72,8 @@ public final class ResultSetAdapterGenerator {
      */
     public static ClassData generate(ClassGeneratorContext context, Spec spec) {
         return context.cache(spec, () -> {
-            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(spec.dataType, SUFFIX));
+            ClassDescription target =
+                    context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(spec.dataType, SUFFIX));
             DataModelReference dataType = context.getDataModelLoader().load(spec.dataType);
             List<PropertyReference> properties = spec.properties.stream()
                     .map(name -> Arguments.requireNonNull(dataType.findProperty(name), () -> name))

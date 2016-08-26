@@ -57,6 +57,8 @@ public final class KeyValueSerDeGenerator {
 
     private static final String CATEGORY = "serde"; //$NON-NLS-1$
 
+    private static final String SUFFIX = "KvSerDe"; //$NON-NLS-1$
+
     private KeyValueSerDeGenerator() {
         return;
     }
@@ -82,7 +84,7 @@ public final class KeyValueSerDeGenerator {
     public static ClassData generate(ClassGeneratorContext context, TypeDescription type, Group grouping) {
         return context.cache(new Key(type, grouping), () -> {
             DataModelReference ref = context.getDataModelLoader().load(type);
-            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "KvSerDe")); //$NON-NLS-1$
+            ClassDescription target = context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(type, SUFFIX));
             return generate0(ref, grouping, target);
         });
     }

@@ -21,6 +21,7 @@ import java.io.IOException;
  * An abstract super interface of generic operations.
  * @param <T> the operation input type
  */
+@FunctionalInterface
 public interface Operation<T> {
 
     /**

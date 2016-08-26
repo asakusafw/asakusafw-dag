@@ -20,6 +20,7 @@ import java.util.List;
 /**
  * Represents a group of counter.
  */
+@FunctionalInterface
 public interface CounterGroup {
 
     /**

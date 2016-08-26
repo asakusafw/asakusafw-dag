@@ -21,6 +21,7 @@ import com.asakusafw.lang.compiler.model.graph.Group;
 /**
  * An extension for using native value comparator.
  */
+@FunctionalInterface
 public interface NativeValueComparatorExtension {
 
     /**

@@ -73,6 +73,7 @@ public abstract class JdbcDagTestRoot {
 
     /**
      * Adds a resource to be closed after this test case.
+     * @param <T> the resource type
      * @param resource the resource
      * @return the resource
      */

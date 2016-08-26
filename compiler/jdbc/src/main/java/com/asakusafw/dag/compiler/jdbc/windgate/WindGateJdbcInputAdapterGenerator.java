@@ -17,7 +17,8 @@ package com.asakusafw.dag.compiler.jdbc.windgate;
 
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,7 +33,7 @@ import com.asakusafw.dag.compiler.jdbc.ResultSetAdapterGenerator;
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.ResultSetAdapter;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcInputAdapter;
-import com.asakusafw.dag.runtime.jdbc.util.WindGateDirect;
+import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.dag.utils.common.Tuple;
@@ -41,7 +42,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
- * Generates {@link JdbcInputAdapter} using {@link WindGateDirect} API.
+ * Generates {@link JdbcInputAdapter} using {@link WindGateJdbcDirect} API.
  * @since 0.2.0
  */
 public final class WindGateJdbcInputAdapterGenerator {
@@ -63,7 +64,7 @@ public final class WindGateJdbcInputAdapterGenerator {
     public static ClassData generate(ClassGeneratorContext context, Spec spec) {
         Arguments.requireNonNull(context);
         Arguments.requireNonNull(spec);
-        return generate(context, Arrays.asList(spec));
+        return generate(context, Collections.singletonList(spec));
     }
 
     /**
@@ -76,6 +77,19 @@ public final class WindGateJdbcInputAdapterGenerator {
         Arguments.requireNonNull(context);
         Arguments.requireNonNull(specs);
         return generate(context, specs, context.getClassName(CATEGORY, HINT));
+    }
+
+    /**
+     * Generates {@link JdbcInputAdapter} class.
+     * @param context the current context
+     * @param spec the target input spec
+     * @param target the target class
+     * @return the generated class data
+     */
+    public static ClassData generate(ClassGeneratorContext context, Spec spec, ClassDescription target) {
+        Arguments.requireNonNull(context);
+        Arguments.requireNonNull(spec);
+        return generate(context, Collections.singletonList(spec), target);
     }
 
     /**
@@ -107,7 +121,7 @@ public final class WindGateJdbcInputAdapterGenerator {
                 getArray(v, spec.options.stream().toArray(String[]::new));
 
                 v.visitMethodInsn(Opcodes.INVOKESTATIC,
-                        typeOf(WindGateDirect.class).getInternalName(),
+                        typeOf(WindGateJdbcDirect.class).getInternalName(),
                         "input",
                         Type.getMethodDescriptor(typeOf(Function.class),
                                 typeOf(String.class), // profileName
@@ -132,6 +146,7 @@ public final class WindGateJdbcInputAdapterGenerator {
 
     /**
      * Represents an operation spec for {@link JdbcInputAdapter}.
+     * @since 0.2.0
      */
     public static class Spec {
 
@@ -152,6 +167,21 @@ public final class WindGateJdbcInputAdapterGenerator {
         /**
          * Creates a new instance.
          * @param id the input ID
+         * @param model the input model
+         */
+        public Spec(String id, WindGateJdbcInputModel model) {
+            this(id,
+                    model.getDataType(),
+                    model.getProfileName(),
+                    model.getTableName(),
+                    model.getColumnMappings(),
+                    model.getCondition(),
+                    model.getOptions());
+        }
+
+        /**
+         * Creates a new instance.
+         * @param id the input ID
          * @param dataType the data type
          * @param profileName the profile name
          * @param tableName the table name
@@ -166,7 +196,7 @@ public final class WindGateJdbcInputAdapterGenerator {
                 String tableName,
                 List<Tuple<String, PropertyName>> columnMappings,
                 String condition,
-                List<String> options) {
+                Collection<String> options) {
             Arguments.requireNonNull(id);
             Arguments.requireNonNull(dataType);
             Arguments.requireNonNull(profileName);

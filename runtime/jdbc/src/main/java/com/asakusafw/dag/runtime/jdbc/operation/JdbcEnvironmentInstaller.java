@@ -185,7 +185,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
 
     private static Map<String, Map<String, String>> getProfiles(Map<String, String> flat) {
         return flat.entrySet().stream()
-                .map(e -> new Tuple<>(e.getKey(), e.getValue()))
+                .map(Tuple::of)
                 .filter(e -> e.left() != null)
                 .flatMap(t -> {
                     Matcher matcher = PATTERN_KEY.matcher(t.left());
@@ -226,7 +226,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
     private static Map<String, String> extractMap(String profile, Map<String, String> properties, String key) {
         Pattern pattern = Pattern.compile(Pattern.quote(key) + "\\.(.+)"); //$NON-NLS-1$
         return properties.entrySet().stream()
-                .map(e -> new Tuple<>(e.getKey(), e.getValue()))
+                .map(Tuple::of)
                 .flatMap(t -> {
                     Matcher matcher = pattern.matcher(t.left());
                     if (matcher.matches()) {
