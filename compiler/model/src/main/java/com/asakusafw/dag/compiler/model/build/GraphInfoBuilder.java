@@ -32,6 +32,8 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
 
 /**
  * Builds {@link GraphInfo}.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class GraphInfoBuilder {
 
@@ -50,7 +52,6 @@ public class GraphInfoBuilder {
      */
     public void add(ResolvedVertexInfo vertex) {
         Arguments.requireNonNull(vertex);
-
         String id = vertex.getId();
         Invariants.require(vertices.containsKey(id) == false, id);
         vertices.put(id, vertex);
@@ -67,6 +68,17 @@ public class GraphInfoBuilder {
         Invariants.require(vertexMap.containsKey(member) == false, () -> member);
         add(vertex);
         vertexMap.put(member, vertex);
+    }
+
+    /**
+     * Returns a vertex which has the target ID.
+     * @param id the vertex ID
+     * @return the related vertex, or {@code null} if it is not defined
+     * @since 0.2.0
+     */
+    public ResolvedVertexInfo get(String id) {
+        Arguments.requireNonNull(id);
+        return vertices.get(id);
     }
 
     /**
