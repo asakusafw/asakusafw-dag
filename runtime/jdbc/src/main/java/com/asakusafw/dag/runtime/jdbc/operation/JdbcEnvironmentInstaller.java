@@ -20,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -225,7 +226,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
 
     private static Map<String, String> extractMap(String profile, Map<String, String> properties, String key) {
         Pattern pattern = Pattern.compile(Pattern.quote(key) + "\\.(.+)"); //$NON-NLS-1$
-        return properties.entrySet().stream()
+        Map<String, String> results = properties.entrySet().stream()
                 .map(Tuple::of)
                 .flatMap(t -> {
                     Matcher matcher = pattern.matcher(t.left());
@@ -237,6 +238,13 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                     }
                 })
                 .collect(Collectors.toMap(Tuple::left, Tuple::right));
+        for (Iterator<String> iter = properties.keySet().iterator(); iter.hasNext();) {
+            String next = iter.next();
+            if (next != null && pattern.matcher(next).matches()) {
+                iter.remove();
+            }
+        }
+        return results;
     }
 
     static String qualified(String profile, String key) {

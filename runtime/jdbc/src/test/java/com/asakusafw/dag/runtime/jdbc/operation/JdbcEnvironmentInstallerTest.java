@@ -96,6 +96,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
                 q("a", KEY_BATCH_INSERT_SIZE), 2,
                 q("a", KEY_INPUT_THREADS), 3,
                 q("a", KEY_OUTPUT_THREADS), -1,
+                q("a", KEY_PROPERTIES + ".testing"), "OK",
         });
         JdbcProfile profile = environment.getProfile("a");
         try (ConnectionPool.Handle ha = profile.acquire();
