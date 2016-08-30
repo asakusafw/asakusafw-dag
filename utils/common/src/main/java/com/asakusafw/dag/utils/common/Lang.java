@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -183,6 +184,25 @@ public final class Lang {
         Objects.requireNonNull(action);
         for (T value : iterable) {
             action.perform(value);
+        }
+    }
+
+    /**
+     * Iterates elements over the {@code optional}.
+     * @param <T> the element type
+     * @param <E> the throwable exception type
+     * @param optional the target optional
+     * @param action the action for each element
+     * @throws E if an exception was occurred
+     * @since 0.2.0
+     */
+    public static <T, E extends Exception> void forEach(
+            Optional<T> optional,
+            Action<? super T, ? extends E> action) throws E {
+        Objects.requireNonNull(optional);
+        Objects.requireNonNull(action);
+        if (optional.isPresent()) {
+            action.perform(optional.get());
         }
     }
 

@@ -19,6 +19,9 @@ import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.asakusafw.dag.api.processor.ObjectWriter;
 import com.asakusafw.dag.runtime.jdbc.PreparedStatementAdapter;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
@@ -26,6 +29,8 @@ import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 
 class BasicAppendCursor implements ObjectWriter {
+
+    static final Logger LOG = LoggerFactory.getLogger(BasicJdbcOutputDriver.class);
 
     private final PreparedStatement statement;
 

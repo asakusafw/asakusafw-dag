@@ -22,6 +22,9 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
@@ -36,39 +39,42 @@ import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
  */
 public class BasicJdbcInputDriver implements JdbcInputDriver {
 
+    static final Logger LOG = LoggerFactory.getLogger(BasicJdbcInputDriver.class);
+
     private final JdbcProfile profile;
 
-    private final String query;
+    private final String sql;
 
     private final ResultSetAdapter<?> adapter;
 
     /**
      * Creates a new instance.
      * @param profile the target JDBC profile
-     * @param query the input query
+     * @param sql the input query
      * @param adapter the result set adapter
      */
-    public BasicJdbcInputDriver(JdbcProfile profile, String query, ResultSetAdapter<?> adapter) {
+    public BasicJdbcInputDriver(JdbcProfile profile, String sql, ResultSetAdapter<?> adapter) {
         Arguments.requireNonNull(profile);
-        Arguments.requireNonNull(query);
+        Arguments.requireNonNull(sql);
         Arguments.requireNonNull(adapter);
         this.profile = profile;
-        this.query = query;
+        this.sql = sql;
         this.adapter = adapter;
     }
 
     @Override
     public List<? extends Partition> getPartitions() throws IOException, InterruptedException {
         return Collections.singletonList(() -> {
+            LOG.debug("JDBC input ({}): {}", profile, sql);
             try (Closer closer = new Closer()) {
                 ConnectionPool.Handle handle = closer.add(profile.acquire());
                 Statement statement = handle.getConnection().createStatement();
-                closer.add(JdbcUtil.wrap(() -> statement.close()));
+                closer.add(JdbcUtil.wrap(statement::close));
                 if (profile.getFetchSize().isPresent()) {
                     statement.setFetchSize(profile.getFetchSize().getAsInt());
                 }
-                ResultSet results = statement.executeQuery(query);
-                JdbcUtil.wrap(() -> statement.close());
+                ResultSet results = statement.executeQuery(sql);
+                closer.add(JdbcUtil.wrap(results::close));
 
                 return new BasicFetchCursor(results, adapter, closer.move());
             } catch (SQLException e) {

@@ -21,7 +21,6 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -67,11 +66,8 @@ public class WindGateJdbcInputAdapterGeneratorTest extends JdbcDagCompilerTestRo
     @Test
     public void simple() throws Exception {
         insert(0, null, "Hello, world!");
-        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS, null,
-                Arrays.asList()));
+        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcInputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)));
         assertThat(run(data), contains(new KsvModel(0, null, "Hello, world!")));
     }
 
@@ -84,11 +80,8 @@ public class WindGateJdbcInputAdapterGeneratorTest extends JdbcDagCompilerTestRo
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS, null,
-                Arrays.asList()));
+        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcInputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)));
         assertThat(run(data), contains(
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(2, null, "Hello2"),
@@ -104,14 +97,25 @@ public class WindGateJdbcInputAdapterGeneratorTest extends JdbcDagCompilerTestRo
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS, "M_KEY != 2",
-                Arrays.asList()));
+        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcInputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                    .withCondition("M_KEY != 2")));
         assertThat(run(data), contains(
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(3, null, "Hello3")));
+    }
+
+    /**
+     * w/ options.
+     * @throws Exception if failed
+     */
+    @Test
+    public void options() throws Exception {
+        insert(0, null, "Hello, world!");
+        ClassData data = WindGateJdbcInputAdapterGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcInputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                       .withOptions("O", "P", "T")));
+        assertThat(run(data), contains(new KsvModel(0, null, "Hello, world!")));
     }
 
     private List<KsvModel> run(ClassData data) {

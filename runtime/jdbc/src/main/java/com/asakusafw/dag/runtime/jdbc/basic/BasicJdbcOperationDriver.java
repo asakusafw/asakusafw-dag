@@ -54,9 +54,9 @@ public class BasicJdbcOperationDriver implements JdbcOperationDriver {
 
     @Override
     public void perform() throws IOException, InterruptedException {
+        LOG.debug("JDBC operation: {}", sql);
         try (ConnectionPool.Handle handle = profile.acquire();
                 Statement statement = handle.getConnection().createStatement()) {
-            LOG.debug("execute: {}", sql);
             statement.execute(sql);
             LOG.debug("commit: {}", sql);
             handle.getConnection().commit();

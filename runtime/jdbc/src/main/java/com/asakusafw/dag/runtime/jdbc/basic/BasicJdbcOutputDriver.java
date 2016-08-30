@@ -86,11 +86,12 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
 
     @Override
     public ObjectWriter open() throws IOException, InterruptedException {
+        LOG.debug("JDBC output ({}): {}", profile, sql);
         int windowSize = profile.getBatchInsertSize().orElse(DEFAULT_INSERT_SIZE);
         try (Closer closer = new Closer()) {
             ConnectionPool.Handle handle = closer.add(profile.acquire());
             PreparedStatement statement = handle.getConnection().prepareStatement(sql);
-            closer.add(JdbcUtil.wrap(() -> statement.close()));
+            closer.add(JdbcUtil.wrap(statement::close));
             return new BasicAppendCursor(statement, adapter, windowSize, closer.move());
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);

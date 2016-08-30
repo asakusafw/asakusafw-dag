@@ -15,11 +15,14 @@
  */
 package com.asakusafw.dag.runtime.jdbc.util;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
@@ -40,53 +43,38 @@ import com.asakusafw.dag.utils.common.Optionals;
  */
 public final class WindGateJdbcDirect {
 
+    /**
+     * Copy of {@code com.asakusafw.windgate.core.vocabulary.JdbcProcess.OptionSymbols.ORACLE_DIRPATH}.
+     */
+    static final String OPTIMIAZATION_ORACLE_DIRPATH = "ORACLE_DIRPATH"; //$NON-NLS-1$
+
     private WindGateJdbcDirect() {
         return;
     }
 
     /**
-     * Builds a WindGate JDBC input.
+     * Returns a new build for building WindGate JDBC input.
      * @param profileName the profile name
      * @param tableName the target table name
      * @param columnNames the target column names
-     * @param condition the condition expression (nullable)
      * @param jdbcAdapter the JDBC adapter
-     * @param options the extra options
-     * @return an input driver provider for the specs
+     * @return the created builder
      */
-    public static Function<? super JdbcContext, ? extends JdbcInputDriver> input(
+    public static InputBuilder input(
             String profileName,
             String tableName,
             List<String> columnNames,
-            String condition,
-            ResultSetAdapter<?> jdbcAdapter,
-            String... options) {
-        Arguments.requireNonNull(options);
-        return input(profileName, tableName, columnNames, condition, jdbcAdapter, Arguments.copyToSet(options));
+            ResultSetAdapter<?> jdbcAdapter) {
+        return new InputBuilder(profileName, tableName, columnNames, jdbcAdapter);
     }
 
-    /**
-     * Builds a WindGate JDBC input.
-     * @param profileName the profile name
-     * @param tableName the target table name
-     * @param columnNames the target column names
-     * @param condition the condition expression (nullable)
-     * @param jdbcAdapter the JDBC adapter
-     * @param options the extra options
-     * @return an input driver provider for the specs
-     */
-    public static Function<? super JdbcContext, ? extends JdbcInputDriver> input(
+    static Function<? super JdbcContext, ? extends JdbcInputDriver> input(
             String profileName,
             String tableName,
             List<String> columnNames,
             String condition,
             ResultSetAdapter<?> jdbcAdapter,
             Set<String> options) {
-        Arguments.requireNonNull(profileName);
-        Arguments.requireNonNull(tableName);
-        Arguments.requireNonNull(columnNames);
-        Arguments.requireNonNull(jdbcAdapter);
-        Arguments.requireNonNull(options);
         return context -> {
             JdbcProfile profile = getProfile(context, profileName);
             Optional<String> cond = resolve(context, condition);
@@ -96,37 +84,22 @@ public final class WindGateJdbcDirect {
     }
 
     /**
-     * Builds a WindGate JDBC output with truncate operation.
+     * Returns a new build for building WindGate JDBC output.
      * @param profileName the profile name
      * @param tableName the target table name
      * @param columnNames the target column names
-     * @param customTruncate the custom truncate statement
      * @param jdbcAdapter the JDBC adapter
-     * @param options the extra options
-     * @return an input driver provider for the specs
+     * @return the created builder
      */
-    public static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(
+    public static OutputBuilder output(
             String profileName,
             String tableName,
             List<String> columnNames,
-            String customTruncate,
-            PreparedStatementAdapter<?> jdbcAdapter,
-            String... options) {
-        Arguments.requireNonNull(options);
-        return output(profileName, tableName, columnNames, customTruncate, jdbcAdapter, Arguments.copyToSet(options));
+            PreparedStatementAdapter<?> jdbcAdapter) {
+        return new OutputBuilder(profileName, tableName, columnNames, jdbcAdapter);
     }
 
-    /**
-     * Builds a WindGate JDBC output with truncate operation.
-     * @param profileName the profile name
-     * @param tableName the target table name
-     * @param columnNames the target column names
-     * @param customTruncate the custom truncate statement (nullable)
-     * @param jdbcAdapter the JDBC adapter
-     * @param options the extra options
-     * @return an input driver provider for the specs
-     */
-    public static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(
+    static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(
             String profileName,
             String tableName,
             List<String> columnNames,
@@ -150,34 +123,17 @@ public final class WindGateJdbcDirect {
     }
 
     /**
-     * Builds a WindGate JDBC output with truncate operation.
+     * Returns a new build for building WindGate JDBC output (truncate operation only).
      * @param profileName the profile name
      * @param tableName the target table name
      * @param columnNames the target column names
-     * @param customTruncate the custom truncate statement (nullable)
-     * @param options the extra options
-     * @return an input driver provider for the specs
+     * @return the created builder
      */
-    public static Function<? super JdbcContext, ? extends JdbcOperationDriver> truncate(
-            String profileName,
-            String tableName,
-            List<String> columnNames,
-            String customTruncate,
-            String... options) {
-        Arguments.requireNonNull(options);
-        return truncate(profileName, tableName, columnNames, customTruncate, Arguments.copyToSet(options));
+    public static TruncateBuilder truncate(String profileName, String tableName, List<String> columnNames) {
+        return new TruncateBuilder(profileName, tableName, columnNames);
     }
 
-    /**
-     * Builds a WindGate JDBC output with truncate operation.
-     * @param profileName the profile name
-     * @param tableName the target table name
-     * @param columnNames the target column names
-     * @param customTruncate the custom truncate statement (nullable)
-     * @param options the extra options
-     * @return an input driver provider for the specs
-     */
-    public static Function<? super JdbcContext, ? extends JdbcOperationDriver> truncate(
+    static Function<? super JdbcContext, ? extends JdbcOperationDriver> truncate(
             String profileName,
             String tableName,
             List<String> columnNames,
@@ -204,6 +160,10 @@ public final class WindGateJdbcDirect {
         return Optionals.of(pattern).map(context::resolve);
     }
 
+    private static boolean isActive(JdbcProfile profile, Set<String> options, String key) {
+        return profile.getAvailableOptions().contains(key) && options.contains(key);
+    }
+
     private static String buildSelectStatement(
             JdbcProfile profile,
             String tableName,
@@ -218,8 +178,12 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             Set<String> options) {
-        // TODO optimize Oracle DIRPATH
-        return buildBasicInsertStatement(tableName, columnNames);
+        boolean oraDirPath = isActive(profile, options, OPTIMIAZATION_ORACLE_DIRPATH);
+        if (oraDirPath) {
+            return buildOracleDirPathInsertStatement(tableName, columnNames);
+        } else {
+            return buildBasicInsertStatement(tableName, columnNames);
+        }
     }
 
     private static String buildTruncateStatement(
@@ -260,9 +224,287 @@ public final class WindGateJdbcDirect {
         buf.append(String.join(",", columnNames)); //$NON-NLS-1$
         buf.append(") ");
         buf.append("VALUES ");
-        buf.append(" (");
-        buf.append(String.join(",", Collections.nCopies(columnNames.size(), "?"))); //$NON-NLS-1$ //$NON-NLS-2$
+        buf.append("(");
+        buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
         buf.append(")");
         return buf.toString();
+    }
+
+    private static List<String> placeholders(int count) {
+        return Collections.nCopies(count, "?"); //$NON-NLS-1$
+    }
+
+    private static String buildOracleDirPathInsertStatement(String tableName, List<String> columnNames) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("INSERT ");
+        buf.append("/*+APPEND_VALUES*/ ");
+        buf.append("INTO ");
+        buf.append(tableName);
+        buf.append(" (");
+        buf.append(String.join(",", columnNames)); //$NON-NLS-1$
+        buf.append(") ");
+        buf.append("VALUES ");
+        buf.append("(");
+        buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
+        buf.append(")");
+        return buf.toString();
+    }
+
+    /**
+     * A build for building {@link JdbcInputDriver}.
+     * @since 0.2.0
+     */
+    public static final class InputBuilder {
+
+        final String profileName;
+
+        final String tableName;
+
+        final List<String> columnNames;
+
+        final ResultSetAdapter<?> adapter;
+
+        String condition;
+
+        final Set<String> options = new LinkedHashSet<>();
+
+        InputBuilder(String profileName, String tableName, List<String> columnNames, ResultSetAdapter<?> adapter) {
+            Arguments.requireNonNull(profileName);
+            Arguments.requireNonNull(tableName);
+            Arguments.requireNonNull(columnNames);
+            Arguments.requireNonNull(adapter);
+            this.profileName = profileName;
+            this.tableName = tableName;
+            this.columnNames = Arguments.freeze(columnNames);
+            this.adapter = adapter;
+        }
+
+        /**
+         * Add an option.
+         * @param value the option
+         * @return this
+         */
+        public InputBuilder withOption(String value) {
+            this.options.add(value);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public InputBuilder withOptions(Collection<String> values) {
+            values.forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public InputBuilder withOptions(String... values) {
+            Stream.of(values).forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Sets the optional condition expression.
+         * @param value the expression
+         * @return this
+         */
+        public InputBuilder withCondition(String value) {
+            this.condition = value;
+            return this;
+        }
+
+        /**
+         * Builds a driver provider.
+         * @return the built object
+         */
+        public Function<? super JdbcContext, ? extends JdbcInputDriver> build() {
+            return input(profileName, tableName, columnNames, condition, adapter, options);
+        }
+
+        /**
+         * Builds a driver.
+         * @param context the current context
+         * @return the built object
+         */
+        public JdbcInputDriver build(JdbcContext context) {
+            return build().apply(context);
+        }
+    }
+
+    /**
+     * A build for building {@link JdbcOutputDriver}.
+     * @since 0.2.0
+     */
+    public static final class OutputBuilder {
+
+        final String profileName;
+
+        final String tableName;
+
+        final List<String> columnNames;
+
+        final PreparedStatementAdapter<?> adapter;
+
+        String customTruncate;
+
+        final Set<String> options = new LinkedHashSet<>();
+
+        OutputBuilder(
+                String profileName, String tableName, List<String> columnNames, PreparedStatementAdapter<?> adapter) {
+            Arguments.requireNonNull(profileName);
+            Arguments.requireNonNull(tableName);
+            Arguments.requireNonNull(columnNames);
+            Arguments.requireNonNull(adapter);
+            this.profileName = profileName;
+            this.tableName = tableName;
+            this.columnNames = Arguments.freeze(columnNames);
+            this.adapter = adapter;
+        }
+
+        /**
+         * Add an option.
+         * @param value the option
+         * @return this
+         */
+        public OutputBuilder withOption(String value) {
+            this.options.add(value);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public OutputBuilder withOptions(Collection<String> values) {
+            values.forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public OutputBuilder withOptions(String... values) {
+            Stream.of(values).forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Sets the optional custom truncate statement.
+         * @param value the statement
+         * @return this
+         */
+        public OutputBuilder withCustomTruncate(String value) {
+            this.customTruncate = value;
+            return this;
+        }
+
+        /**
+         * Builds a driver provider.
+         * @return the built object
+         */
+        public Function<? super JdbcContext, ? extends JdbcOutputDriver> build() {
+            return output(profileName, tableName, columnNames, customTruncate, adapter, options);
+        }
+
+        /**
+         * Builds a driver.
+         * @param context the current context
+         * @return the built object
+         */
+        public JdbcOutputDriver build(JdbcContext context) {
+            return build().apply(context);
+        }
+    }
+
+    /**
+     * A build for building {@link JdbcOperationDriver}.
+     * @since 0.2.0
+     */
+    public static final class TruncateBuilder {
+
+        final String profileName;
+
+        final String tableName;
+
+        final List<String> columnNames;
+
+        String customTruncate;
+
+        final Set<String> options = new LinkedHashSet<>();
+
+        TruncateBuilder(String profileName, String tableName, List<String> columnNames) {
+            Arguments.requireNonNull(profileName);
+            Arguments.requireNonNull(tableName);
+            Arguments.requireNonNull(columnNames);
+            this.profileName = profileName;
+            this.tableName = tableName;
+            this.columnNames = Arguments.freeze(columnNames);
+        }
+
+        /**
+         * Add an option.
+         * @param value the option
+         * @return this
+         */
+        public TruncateBuilder withOption(String value) {
+            this.options.add(value);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public TruncateBuilder withOptions(Collection<String> values) {
+            values.forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the values
+         * @return this
+         */
+        public TruncateBuilder withOptions(String... values) {
+            Stream.of(values).forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Sets the optional custom truncate statement.
+         * @param value the statement
+         * @return this
+         */
+        public TruncateBuilder withCustomTruncate(String value) {
+            this.customTruncate = value;
+            return this;
+        }
+
+        /**
+         * Builds a driver provider.
+         * @return the built object
+         */
+        public Function<? super JdbcContext, ? extends JdbcOperationDriver> build() {
+            return truncate(profileName, tableName, columnNames, customTruncate, options);
+        }
+
+        /**
+         * Builds a driver.
+         * @param context the current context
+         * @return the built object
+         */
+        public JdbcOperationDriver build(JdbcContext context) {
+            return build().apply(context);
+        }
     }
 }

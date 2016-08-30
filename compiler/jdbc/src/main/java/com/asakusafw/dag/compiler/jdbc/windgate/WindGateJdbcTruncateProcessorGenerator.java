@@ -18,9 +18,7 @@ package com.asakusafw.dag.compiler.jdbc.windgate;
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 
 import org.objectweb.asm.ClassWriter;
@@ -35,6 +33,7 @@ import com.asakusafw.dag.runtime.jdbc.operation.JdbcOperationProcessor;
 import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Lang;
+import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.dag.utils.common.Tuple;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
@@ -43,6 +42,8 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
  * @since 0.2.0
  */
 public final class WindGateJdbcTruncateProcessorGenerator {
+
+    private static final Type TYPE_BUILDER = typeOf(WindGateJdbcDirect.TruncateBuilder.class);
 
     private static final String CATEGORY = "jdbc.windgate"; //$NON-NLS-1$
 
@@ -93,23 +94,35 @@ public final class WindGateJdbcTruncateProcessorGenerator {
                 self.load(v);
                 getConst(v, spec.id);
 
-                getConst(v, spec.profileName);
-                getConst(v, spec.tableName);
-                getList(v, spec.columnNames);
-                getConst(v, spec.customTruncate);
-                getArray(v, spec.options.stream().toArray(String[]::new));
-
+                getConst(v, spec.model.getProfileName());
+                getConst(v, spec.model.getTableName());
+                getList(v, Lang.project(spec.model.getColumnMappings(), Tuple::left));
                 v.visitMethodInsn(Opcodes.INVOKESTATIC,
                         typeOf(WindGateJdbcDirect.class).getInternalName(),
                         "truncate",
-                        Type.getMethodDescriptor(typeOf(Function.class),
+                        Type.getMethodDescriptor(TYPE_BUILDER,
                                 typeOf(String.class), // profileName
                                 typeOf(String.class), // tableName
-                                typeOf(List.class), // columnNames
-                                typeOf(String.class), // customTruncate
-                                typeOf(String[].class)), // options
+                                typeOf(List.class)), // columnNames
                         false);
-
+                Lang.forEach(Optionals.of(spec.model.getCustomTruncate()), s -> {
+                    getConst(v, s);
+                    v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                            TYPE_BUILDER.getInternalName(), "withCustomTruncate", //$NON-NLS-1$
+                            Type.getMethodDescriptor(TYPE_BUILDER, typeOf(String.class)),
+                            false);
+                });
+                Lang.forEach(spec.model.getOptions(), s -> {
+                    getConst(v, s);
+                    v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                            TYPE_BUILDER.getInternalName(), "withOption", //$NON-NLS-1$
+                            Type.getMethodDescriptor(TYPE_BUILDER, typeOf(String.class)),
+                            false);
+                });
+                v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                        TYPE_BUILDER.getInternalName(), "build", //$NON-NLS-1$
+                        Type.getMethodDescriptor(typeOf(Function.class)),
+                        false);
                 v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
                         target.getInternalName(), "bind", //$NON-NLS-1$
                         Type.getMethodDescriptor(typeOf(JdbcOperationProcessor.class),
@@ -122,6 +135,7 @@ public final class WindGateJdbcTruncateProcessorGenerator {
         return new ClassData(target, writer::toByteArray);
     }
 
+
     /**
      * Represents an operation spec for {@link JdbcOperationDriver} for truncating tables.
      * @since 0.2.0
@@ -130,15 +144,7 @@ public final class WindGateJdbcTruncateProcessorGenerator {
 
         final String id;
 
-        final String profileName;
-
-        final String tableName;
-
-        final List<String> columnNames;
-
-        final String customTruncate;
-
-        final Set<String> options;
+        final WindGateJdbcOutputModel model;
 
         /**
          * Creates a new instance.
@@ -146,41 +152,10 @@ public final class WindGateJdbcTruncateProcessorGenerator {
          * @param model the output model
          */
         public Spec(String id, WindGateJdbcOutputModel model) {
-            this(id,
-                    model.getProfileName(),
-                    model.getTableName(),
-                    Lang.project(model.getColumnMappings(), Tuple::left),
-                    model.getCustomTruncate(),
-                    model.getOptions());
-        }
-
-        /**
-         * Creates a new instance.
-         * @param id the output ID
-         * @param profileName the profile name
-         * @param tableName the table name
-         * @param columnNames the column names
-         * @param customTruncate the custom truncate statement (nullable)
-         * @param options the WindGate options
-         */
-        public Spec(
-                String id,
-                String profileName,
-                String tableName,
-                List<String> columnNames,
-                String customTruncate,
-                Collection<String> options) {
             Arguments.requireNonNull(id);
-            Arguments.requireNonNull(profileName);
-            Arguments.requireNonNull(tableName);
-            Arguments.requireNonNull(columnNames);
-            Arguments.requireNonNull(options);
+            Arguments.requireNonNull(model);
             this.id = id;
-            this.profileName = profileName;
-            this.tableName = tableName;
-            this.columnNames = Arguments.freeze(columnNames);
-            this.customTruncate = customTruncate;
-            this.options = Arguments.freezeToSet(options);
+            this.model = model;
         }
     }
 }

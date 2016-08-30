@@ -16,7 +16,10 @@
 package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.OptionalInt;
+import java.util.Set;
 
 import com.asakusafw.dag.utils.common.Arguments;
 
@@ -30,13 +33,15 @@ public class JdbcProfile {
 
     private final ConnectionPool connectionPool;
 
-    private int fetchSize;
+    private final int fetchSize;
 
-    private int insertSize;
+    private final int insertSize;
 
-    private int maxInputConcurrency;
+    private final int maxInputConcurrency;
 
-    private int maxOutputConcurrency;
+    private final int maxOutputConcurrency;
+
+    private final Set<String> availableOptions;
 
     /**
      * Creates a new instance.
@@ -44,10 +49,7 @@ public class JdbcProfile {
      * @param connectionPool the connection pool for the profile
      */
     public JdbcProfile(String name, ConnectionPool connectionPool) {
-        Arguments.requireNonNull(name);
-        Arguments.requireNonNull(connectionPool);
-        this.name = name;
-        this.connectionPool = connectionPool;
+        this(name, connectionPool, -1, -1, -1, -1, Collections.emptySet());
     }
 
     /**
@@ -58,19 +60,23 @@ public class JdbcProfile {
      * @param insertSize the number of bulk insert records, or {@code <= 0} if it is not defined
      * @param maxInputConcurrency the number of threads per input operation, or {@code <= 0} if it is not defined
      * @param maxOutputConcurrency the number of threads per output operation, or {@code <= 0} if it is not defined
+     * @param availableOptions the available option names
      */
     public JdbcProfile(
             String name, ConnectionPool connectionPool,
             int fetchSize, int insertSize,
-            int maxInputConcurrency, int maxOutputConcurrency) {
+            int maxInputConcurrency, int maxOutputConcurrency,
+            Collection<String> availableOptions) {
         Arguments.requireNonNull(name);
         Arguments.requireNonNull(connectionPool);
+        Arguments.requireNonNull(availableOptions);
         this.name = name;
         this.connectionPool = connectionPool;
         this.fetchSize = fetchSize;
         this.insertSize = insertSize;
         this.maxInputConcurrency = maxInputConcurrency;
         this.maxOutputConcurrency = maxOutputConcurrency;
+        this.availableOptions = Arguments.freezeToSet(availableOptions);
     }
 
     /**
@@ -125,6 +131,14 @@ public class JdbcProfile {
 
     private static OptionalInt getOptionalSize(int size) {
         return size <= 0 ? OptionalInt.empty() : OptionalInt.of(size);
+    }
+
+    /**
+     * Returns the available option names.
+     * @return the available option names
+     */
+    public Set<String> getAvailableOptions() {
+        return availableOptions;
     }
 
     @Override

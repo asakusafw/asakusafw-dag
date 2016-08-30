@@ -24,8 +24,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.Rule;
 import org.junit.rules.ExternalResource;
@@ -71,6 +74,8 @@ public abstract class JdbcDagTestRoot {
 
     final Closer closer = new Closer();
 
+    private final Set<String> options = new LinkedHashSet<>();
+
     /**
      * Adds a resource to be closed after this test case.
      * @param <T> the resource type
@@ -94,6 +99,14 @@ public abstract class JdbcDagTestRoot {
     }
 
     /**
+     * Adds options.
+     * @param values the options
+     */
+    public void options(String... values) {
+        Stream.of(values).forEach(this.options::add);
+    }
+
+    /**
      * Creates a new environment.
      * @param profileNames the profile names
      * @return the environment
@@ -101,7 +114,10 @@ public abstract class JdbcDagTestRoot {
     public JdbcEnvironment environment(String... profileNames) {
         List<JdbcProfile> profiles = new ArrayList<>();
         for (String name : profileNames) {
-            profiles.add(new JdbcProfile(name, pool(1)));
+            profiles.add(new JdbcProfile(
+                    name, pool(1),
+                    -1, -1, -1, -1,
+                    options));
         }
         return new JdbcEnvironment(profiles);
     }

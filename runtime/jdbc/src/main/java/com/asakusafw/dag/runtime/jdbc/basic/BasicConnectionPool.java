@@ -157,7 +157,7 @@ public class BasicConnectionPool implements ConnectionPool {
         try (Closer closer = new Closer()) {
             synchronized (cached) {
                 poolClosed = true;
-                cached.forEach(c -> closer.add(JdbcUtil.wrap(() -> c.close())));
+                cached.forEach(c -> closer.add(JdbcUtil.wrap(c::close)));
                 cached.clear();
             }
         }

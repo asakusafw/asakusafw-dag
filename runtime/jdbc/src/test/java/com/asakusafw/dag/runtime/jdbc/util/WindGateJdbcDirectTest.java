@@ -48,9 +48,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
     public void input() throws Exception {
         insert(0, null, "Hello, world!");
         context("testing", c -> {
-            JdbcInputDriver driver = WindGateJdbcDirect.input(
-                    "testing", TABLE, COLS, null,
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .build(c);
             List<KsvModel> results = get(driver);
             assertThat(results, contains(new KsvModel(0, null, "Hello, world!")));
         });
@@ -66,9 +65,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", c -> {
-            JdbcInputDriver driver = WindGateJdbcDirect.input(
-                    "testing", TABLE, COLS, null,
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .build(c);
             List<KsvModel> results = get(driver);
             assertThat(results, contains(
                     new KsvModel(1, null, "Hello1"),
@@ -87,9 +85,9 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", Collections.singletonMap("V", "2"), c -> {
-            JdbcInputDriver driver = WindGateJdbcDirect.input(
-                    "testing", TABLE, COLS, "M_KEY = ${V}",
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .withCondition("M_KEY = ${V}")
+                    .build(c);
             List<KsvModel> results = get(driver);
             assertThat(results, contains(new KsvModel(2, null, "Hello2")));
         });
@@ -102,9 +100,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
     @Test
     public void output() throws Exception {
         context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output(
-                    "testing", TABLE, COLS, null,
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .build(c);
             put(driver, new KsvModel(0, null, "Hello, world!"));
         });
         assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
@@ -117,9 +114,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
     @Test
     public void output_multiple() throws Exception {
         context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output(
-                    "testing", TABLE, COLS, null,
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .build(c);
             put(driver,
                     new KsvModel(1, null, "Hello1"),
                     new KsvModel(2, null, "Hello2"),
@@ -141,9 +137,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output(
-                    "testing", TABLE, COLS, null,
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .build(c);
             driver.initialize();
         });
         assertThat(select(), hasSize(0));
@@ -159,14 +154,30 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", Collections.singletonMap("V", "2"), c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output(
-                    "testing", TABLE, COLS, "DELETE FROM KSV WHERE M_KEY = ${V}",
-                    new KsvJdbcAdapter()).apply(c);
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .withCustomTruncate("DELETE FROM KSV WHERE M_KEY = ${V}")
+                    .build(c);
             driver.initialize();
         });
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(3, null, "Hello3")));
+    }
+
+    /**
+     * output - w/ oracle dirpath.
+     * @throws Exception if failed
+     */
+    @Test
+    public void output_oracle_dirpath() throws Exception {
+        options(WindGateJdbcDirect.OPTIMIAZATION_ORACLE_DIRPATH);
+        context("testing", c -> {
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLS, new KsvJdbcAdapter())
+                    .withOptions(WindGateJdbcDirect.OPTIMIAZATION_ORACLE_DIRPATH)
+                    .build(c);
+            put(driver, new KsvModel(0, null, "Hello, world!"));
+        });
+        assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
     }
 
     /**
@@ -179,8 +190,8 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", c -> {
-            JdbcOperationDriver driver = WindGateJdbcDirect.truncate(
-                    "testing", TABLE, COLS, null).apply(c);
+            JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLS)
+                    .build(c);
             driver.perform();
         });
         assertThat(select(), hasSize(0));
@@ -196,8 +207,9 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         context("testing", Collections.singletonMap("V", "2"), c -> {
-            JdbcOperationDriver driver = WindGateJdbcDirect.truncate(
-                    "testing", TABLE, COLS, "DELETE FROM KSV WHERE M_KEY = ${V}").apply(c);
+            JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLS)
+                    .withCustomTruncate("DELETE FROM KSV WHERE M_KEY = ${V}")
+                    .build(c);
             driver.perform();
         });
         assertThat(select(), contains(

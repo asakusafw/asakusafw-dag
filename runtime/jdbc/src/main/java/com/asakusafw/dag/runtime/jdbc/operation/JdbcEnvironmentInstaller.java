@@ -20,9 +20,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -95,6 +97,11 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
     public static final String KEY_OUTPUT_THREADS = "output.threads";
 
     /**
+     * The property sub-key of comma separated available optimization symbols.
+     */
+    public static final String KEY_OPTIMIZATIONS = "optimizations";
+
+    /**
      * The default value of {@link #KEY_POOL_SIZE}.
      */
     public static final int DEFAULT_POOL_SIZE = 1;
@@ -165,13 +172,15 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
         int insertSize = extract(profileName, properties, KEY_BATCH_INSERT_SIZE, DEFAULT_BATCH_INSERT_SIZE);
         int fetchThreads = extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS);
         int insertThreads = extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS);
+        Set<String> optimizations = extractSet(profileName, properties, KEY_OPTIMIZATIONS);
         ConnectionPool connections = closer.add(new BasicConnectionPool(url, connectionProps, maxConnections));
         if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC profile: name={}, jdbc={}@{}, fetch={}@{}, put={}@{}", new Object[] {
+            LOG.debug("JDBC profile: name={}, jdbc={}@{}, fetch={}@{}, put={}@{}, opt={}", new Object[] {
                     profileName,
                     url, maxConnections,
                     fetchSize, insertThreads,
                     insertSize, insertThreads,
+                    optimizations,
             });
         }
         if (properties.isEmpty() == false) {
@@ -181,7 +190,10 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                         .map(k -> qualified(profileName, k))
                         .collect(Collectors.joining())));
         }
-        return new JdbcProfile(profileName, connections, fetchSize, insertSize, fetchThreads, insertThreads);
+        return new JdbcProfile(
+                profileName, connections,
+                fetchSize, insertSize, fetchThreads, insertThreads,
+                optimizations);
     }
 
     private static Map<String, Map<String, String>> getProfiles(Map<String, String> flat) {
@@ -218,10 +230,19 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                     } catch (NumberFormatException e) {
                         throw new IllegalArgumentException(MessageFormat.format(
                                 "\"{0}\" must be a valid integer: {1}",
-                                qualified(profile, key), v));
+                                qualified(profile, key), v), e);
                     }
                 })
                 .orElse(defaultValue);
+    }
+
+    private static Set<String> extractSet(String profileName, Map<String, String> properties, String key) {
+        return Optionals.remove(properties, key)
+                .map(s -> Stream.of(s.split(","))
+                        .map(String::trim)
+                        .filter(e -> e.isEmpty() == false)
+                        .collect(Collectors.toSet()))
+                .orElse(Collections.emptySet());
     }
 
     private static Map<String, String> extractMap(String profile, Map<String, String> properties, String key) {

@@ -123,7 +123,7 @@ public final class WindGateJdbcIoAnalyzer {
                     .resolve(DescriptionModel.class.getClassLoader());
             return Optional.of(model);
         } catch (ReflectiveOperationException e) {
-            LOG.warn("failed to resolve WindGate model: {}", info);
+            LOG.warn("failed to resolve WindGate model: {}", info, e);
             return Optional.empty();
         }
     }
@@ -151,9 +151,9 @@ public final class WindGateJdbcIoAnalyzer {
         List<Tuple<String, PropertyName>> mappings = parseMappings(classLoader, conf);
         String condition = conf.get(JdbcProcess.CONDITION.key());
         Set<String> options = parseOptions(conf);
-        return Optional.of(new WindGateJdbcInputModel(
-                dataType, profileName,
-                tableName, mappings, condition, options));
+        return Optional.of(new WindGateJdbcInputModel(dataType, profileName, tableName, mappings)
+                .withCondition(condition)
+                .withOptions(options));
     }
 
     /**
@@ -179,9 +179,9 @@ public final class WindGateJdbcIoAnalyzer {
         List<Tuple<String, PropertyName>> mappings = parseMappings(classLoader, conf);
         String truncate = conf.get(JdbcProcess.CUSTOM_TRUNCATE.key());
         Set<String> options = parseOptions(conf);
-        return Optional.of(new WindGateJdbcOutputModel(
-                dataType, profileName,
-                tableName, mappings, truncate, options));
+        return Optional.of(new WindGateJdbcOutputModel(dataType, profileName, tableName, mappings)
+                .withCustomTruncate(truncate)
+                .withOptions(options));
     }
 
     private static boolean isJdbc(DriverScript script) {

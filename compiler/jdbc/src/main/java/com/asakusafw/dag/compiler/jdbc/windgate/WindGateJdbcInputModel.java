@@ -15,9 +15,11 @@
  */
 package com.asakusafw.dag.compiler.jdbc.windgate;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
+import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Tuple;
 import com.asakusafw.lang.compiler.model.PropertyName;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
@@ -28,7 +30,7 @@ import com.asakusafw.lang.compiler.model.description.TypeDescription;
  */
 public class WindGateJdbcInputModel extends WindGateJdbcModel {
 
-    private final String condition;
+    private String condition;
 
     /**
      * Creates a new instance.
@@ -36,18 +38,13 @@ public class WindGateJdbcInputModel extends WindGateJdbcModel {
      * @param profileName the profile name
      * @param tableName the table name
      * @param columnMappings the column mappings
-     * @param condition the condition expression (nullable)
-     * @param options the WindGate options
      */
     public WindGateJdbcInputModel(
             TypeDescription dataType,
             String profileName,
             String tableName,
-            List<Tuple<String, PropertyName>> columnMappings,
-            String condition,
-            Set<String> options) {
-        super(dataType, profileName, tableName, columnMappings, options);
-        this.condition = condition;
+            List<Tuple<String, PropertyName>> columnMappings) {
+        super(dataType, profileName, tableName, columnMappings);
     }
 
     /**
@@ -56,5 +53,36 @@ public class WindGateJdbcInputModel extends WindGateJdbcModel {
      */
     public String getCondition() {
         return condition;
+    }
+
+    /**
+     * Sets the condition.
+     * @param newValue the condition
+     * @return this
+     */
+    public WindGateJdbcInputModel withCondition(String newValue) {
+        this.condition = newValue;
+        return this;
+    }
+
+    /**
+     * Sets the options.
+     * @param newValues the options
+     * @return this
+     */
+    public WindGateJdbcInputModel withOptions(String... newValues) {
+        Arguments.requireNonNull(newValues);
+        return withOptions(Arrays.asList(newValues));
+    }
+
+    /**
+     * Sets the options.
+     * @param newValues the options
+     * @return this
+     */
+    public WindGateJdbcInputModel withOptions(Collection<String> newValues) {
+        Arguments.requireNonNull(newValues);
+        setOptions(newValues);
+        return this;
     }
 }

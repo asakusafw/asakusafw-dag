@@ -19,7 +19,6 @@ import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -58,11 +57,8 @@ public class WindGateJdbcOutputProcessorGeneratorTest extends JdbcDagCompilerTes
     @Test
     public void simple() throws Exception {
         insert(999, null, "ERROR");
-        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS, null,
-                Arrays.asList()));
+        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)));
 
         run(data, new KsvModel(0, null, "Hello, world!"));
         assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
@@ -75,11 +71,8 @@ public class WindGateJdbcOutputProcessorGeneratorTest extends JdbcDagCompilerTes
     @Test
     public void multiple() throws Exception {
         insert(999, null, "ERROR");
-        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS, null,
-                Arrays.asList()));
+        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)));
         run(data,
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(2, null, "Hello2"),
@@ -99,17 +92,27 @@ public class WindGateJdbcOutputProcessorGeneratorTest extends JdbcDagCompilerTes
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec(
-                "x",
-                typeOf(KsvModel.class),
-                PROFILE, TABLE, MAPPINGS,
-                "DELETE KSV WHERE M_KEY != 2",
-                Arrays.asList()));
-
+        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                    .withCustomTruncate("DELETE KSV WHERE M_KEY != 2")));
         run(data, new KsvModel(0, null, "Hello, world!"));
         assertThat(select(), contains(
                 new KsvModel(0, null, "Hello, world!"),
                 new KsvModel(2, null, "Hello2")));
+    }
+
+    /**
+     * w/ options.
+     * @throws Exception if failed
+     */
+    @Test
+    public void options() throws Exception {
+        insert(999, null, "ERROR");
+        ClassData data = WindGateJdbcOutputProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                    .withOptions("O", "P", "T")));
+        run(data, new KsvModel(0, null, "Hello, world!"));
+        assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
     }
 
     private void run(ClassData data, KsvModel... values) {

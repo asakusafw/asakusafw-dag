@@ -15,6 +15,8 @@
  */
 package com.asakusafw.dag.compiler.jdbc.windgate;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -37,7 +39,7 @@ public abstract class WindGateJdbcModel {
 
     private final List<Tuple<String, PropertyName>> columnMappings;
 
-    private final Set<String> options;
+    private Set<String> options = new LinkedHashSet<>();
 
     /**
      * Creates a new instance.
@@ -45,24 +47,20 @@ public abstract class WindGateJdbcModel {
      * @param profileName the profile name
      * @param tableName the table name
      * @param columnMappings the column mappings
-     * @param options the WindGate options
      */
     public WindGateJdbcModel(
             TypeDescription dataType,
             String profileName,
             String tableName,
-            List<Tuple<String, PropertyName>> columnMappings,
-            Set<String> options) {
+            List<Tuple<String, PropertyName>> columnMappings) {
         Arguments.requireNonNull(dataType);
         Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(tableName);
         Arguments.requireNonNull(columnMappings);
-        Arguments.requireNonNull(options);
         this.dataType = dataType;
         this.profileName = profileName;
         this.tableName = tableName;
         this.columnMappings = Arguments.freeze(columnMappings);
-        this.options = Arguments.freezeToSet(options);
     }
 
     /**
@@ -103,5 +101,13 @@ public abstract class WindGateJdbcModel {
      */
     public Set<String> getOptions() {
         return options;
+    }
+
+    /**
+     * Sets the WindGate options.
+     * @param values the values
+     */
+    protected void setOptions(Collection<String> values) {
+        this.options = Arguments.freezeToSet(values);
     }
 }

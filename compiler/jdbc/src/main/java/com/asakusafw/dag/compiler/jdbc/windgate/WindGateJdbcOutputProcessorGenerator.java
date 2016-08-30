@@ -17,9 +17,7 @@ package com.asakusafw.dag.compiler.jdbc.windgate;
 
 import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 
 import org.objectweb.asm.ClassWriter;
@@ -35,16 +33,17 @@ import com.asakusafw.dag.runtime.jdbc.operation.JdbcOutputProcessor;
 import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Lang;
+import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.dag.utils.common.Tuple;
-import com.asakusafw.lang.compiler.model.PropertyName;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
-import com.asakusafw.lang.compiler.model.description.TypeDescription;
 
 /**
  * Generates {@link JdbcOutputProcessor} using {@link WindGateJdbcDirect} API.
  * @since 0.2.0
  */
 public final class WindGateJdbcOutputProcessorGenerator {
+
+    private static final Type TYPE_BUILDER = typeOf(WindGateJdbcDirect.OutputBuilder.class);
 
     private static final String CATEGORY = "jdbc.windgate"; //$NON-NLS-1$
 
@@ -82,29 +81,41 @@ public final class WindGateJdbcOutputProcessorGenerator {
             self.load(v);
             getConst(v, spec.id);
 
-            getConst(v, spec.profileName);
-            getConst(v, spec.tableName);
-            getList(v, Lang.project(spec.columnMappings, Tuple::left));
-            getConst(v, spec.customTruncate);
+            getConst(v, spec.model.getProfileName());
+            getConst(v, spec.model.getTableName());
+            getList(v, Lang.project(spec.model.getColumnMappings(), Tuple::left));
             getNew(v, context.addClassFile(PreparedStatementAdapterGenerator.generate(
                     context,
                     new PreparedStatementAdapterGenerator.Spec(
-                            spec.dataType,
-                            Lang.project(spec.columnMappings, Tuple::right)))));
-            getArray(v, spec.options.stream().toArray(String[]::new));
-
+                            spec.model.getDataType(),
+                            Lang.project(spec.model.getColumnMappings(), Tuple::right)))));
             v.visitMethodInsn(Opcodes.INVOKESTATIC,
                     typeOf(WindGateJdbcDirect.class).getInternalName(),
                     "output",
-                    Type.getMethodDescriptor(typeOf(Function.class),
+                    Type.getMethodDescriptor(TYPE_BUILDER,
                             typeOf(String.class), // profileName
                             typeOf(String.class), // tableName
                             typeOf(List.class), // columnNames
-                            typeOf(String.class), // customTruncate
-                            typeOf(PreparedStatementAdapter.class), // jdbcAdapter
-                            typeOf(String[].class)), // options
+                            typeOf(PreparedStatementAdapter.class)), // adapter
                     false);
-
+            Lang.forEach(Optionals.of(spec.model.getCustomTruncate()), s -> {
+                getConst(v, s);
+                v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                        TYPE_BUILDER.getInternalName(), "withCustomTruncate", //$NON-NLS-1$
+                        Type.getMethodDescriptor(TYPE_BUILDER, typeOf(String.class)),
+                        false);
+            });
+            Lang.forEach(spec.model.getOptions(), s -> {
+                getConst(v, s);
+                v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                        TYPE_BUILDER.getInternalName(), "withOption", //$NON-NLS-1$
+                        Type.getMethodDescriptor(TYPE_BUILDER, typeOf(String.class)),
+                        false);
+            });
+            v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                    TYPE_BUILDER.getInternalName(), "build", //$NON-NLS-1$
+                    Type.getMethodDescriptor(typeOf(Function.class)),
+                    false);
             v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
                     target.getInternalName(), "bind", //$NON-NLS-1$
                     Type.getMethodDescriptor(typeOf(JdbcOutputProcessor.class),
@@ -124,64 +135,18 @@ public final class WindGateJdbcOutputProcessorGenerator {
 
         final String id;
 
-        final TypeDescription dataType;
-
-        final String profileName;
-
-        final String tableName;
-
-        final List<Tuple<String, PropertyName>> columnMappings;
-
-        final String customTruncate;
-
-        final Set<String> options;
+        final WindGateJdbcOutputModel model;
 
         /**
          * Creates a new instance.
-         * @param id the input ID
+         * @param id the output ID
          * @param model the output model
          */
         public Spec(String id, WindGateJdbcOutputModel model) {
-            this(id,
-                    model.getDataType(),
-                    model.getProfileName(),
-                    model.getTableName(),
-                    model.getColumnMappings(),
-                    model.getCustomTruncate(),
-                    model.getOptions());
-        }
-
-        /**
-         * Creates a new instance.
-         * @param id the input ID
-         * @param dataType the data type
-         * @param profileName the profile name
-         * @param tableName the table name
-         * @param columnMappings the column mappings
-         * @param customTruncate the custom truncate statement (nullable)
-         * @param options the WindGate options
-         */
-        public Spec(
-                String id,
-                TypeDescription dataType,
-                String profileName,
-                String tableName,
-                List<Tuple<String, PropertyName>> columnMappings,
-                String customTruncate,
-                Collection<String> options) {
             Arguments.requireNonNull(id);
-            Arguments.requireNonNull(dataType);
-            Arguments.requireNonNull(profileName);
-            Arguments.requireNonNull(tableName);
-            Arguments.requireNonNull(columnMappings);
-            Arguments.requireNonNull(options);
+            Arguments.requireNonNull(model);
             this.id = id;
-            this.dataType = dataType;
-            this.profileName = profileName;
-            this.tableName = tableName;
-            this.columnMappings = Arguments.freeze(columnMappings);
-            this.customTruncate = customTruncate;
-            this.options = Arguments.freezeToSet(options);
+            this.model = model;
         }
     }
 }

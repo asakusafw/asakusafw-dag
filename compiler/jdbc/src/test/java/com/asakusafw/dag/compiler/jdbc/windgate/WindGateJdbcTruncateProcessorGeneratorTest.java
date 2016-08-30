@@ -15,10 +15,10 @@
  */
 package com.asakusafw.dag.compiler.jdbc.windgate;
 
+import static com.asakusafw.lang.compiler.model.description.Descriptions.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -32,6 +32,8 @@ import com.asakusafw.dag.compiler.jdbc.windgate.WindGateJdbcTruncateProcessorGen
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
+import com.asakusafw.dag.utils.common.Tuple;
+import com.asakusafw.lang.compiler.model.PropertyName;
 
 /**
  * Test for {@link WindGateJdbcTruncateProcessorGenerator}.
@@ -42,7 +44,8 @@ public class WindGateJdbcTruncateProcessorGeneratorTest extends JdbcDagCompilerT
 
     private static final String TABLE = "KSV";
 
-    private static final List<String> COLUMNS = Arrays.asList("M_KEY", "M_SORT", "M_VALUE");
+    private static final List<Tuple<String, PropertyName>> MAPPINGS =
+            mappings("M_KEY:key", "M_SORT:sort", "M_VALUE:value");
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
 
@@ -55,11 +58,8 @@ public class WindGateJdbcTruncateProcessorGeneratorTest extends JdbcDagCompilerT
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        run(WindGateJdbcTruncateProcessorGenerator.generate(context(), new Spec(
-                "x",
-                PROFILE, TABLE, COLUMNS,
-                null,
-                Arrays.asList())));
+        run(WindGateJdbcTruncateProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS))));
         assertThat(select(), hasSize(0));
     }
 
@@ -72,14 +72,27 @@ public class WindGateJdbcTruncateProcessorGeneratorTest extends JdbcDagCompilerT
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        run(WindGateJdbcTruncateProcessorGenerator.generate(context(), new Spec(
-                "x",
-                PROFILE, TABLE, COLUMNS,
-                "DELETE KSV WHERE M_KEY = 2",
-                Arrays.asList())));
+        run(WindGateJdbcTruncateProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                    .withCustomTruncate("DELETE KSV WHERE M_KEY = 2"))));
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(3, null, "Hello3")));
+    }
+
+    /**
+     * w/ options.
+     * @throws Exception if failed
+     */
+    @Test
+    public void options() throws Exception {
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        run(WindGateJdbcTruncateProcessorGenerator.generate(context(), new Spec("x",
+                new WindGateJdbcOutputModel(typeOf(KsvModel.class), PROFILE, TABLE, MAPPINGS)
+                    .withOptions("O", "P", "T"))));
+        assertThat(select(), hasSize(0));
     }
 
     private void run(ClassData data) {
