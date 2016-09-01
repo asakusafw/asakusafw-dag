@@ -16,6 +16,7 @@
 package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.MessageFormat;
@@ -70,6 +71,11 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
      * The property sub-key of JDBC connection properties.
      */
     public static final String KEY_PROPERTIES = "properties";
+
+    /**
+     * The property sub-key of the connection pool implementation class name.
+     */
+    public static final String KEY_POOL_CLASS = "connection.pool";
 
     /**
      * The property sub-key of the max number of connections.
@@ -166,6 +172,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
             }
         });
         String url = extract(profileName, properties, KEY_URL);
+        ConnectionPool.Provider provider = extractProvider(context, profileName, properties, KEY_POOL_CLASS);
         int maxConnections = extract(profileName, properties, KEY_POOL_SIZE, DEFAULT_POOL_SIZE);
         Map<String, String> connectionProps = extractMap(profileName, properties, KEY_PROPERTIES);
         int fetchSize = extract(profileName, properties, KEY_FETCH_SIZE, DEFAULT_FETCH_SIZE);
@@ -173,12 +180,12 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
         int fetchThreads = extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS);
         int insertThreads = extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS);
         Set<String> optimizations = extractSet(profileName, properties, KEY_OPTIMIZATIONS);
-        ConnectionPool connections = closer.add(new BasicConnectionPool(url, connectionProps, maxConnections));
+        ConnectionPool connections = closer.add(provider.newInstance(url, connectionProps, maxConnections));
         if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC profile: name={}, jdbc={}@{}, fetch={}@{}, put={}@{}, opt={}", new Object[] {
+            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, fetch={}@{}, put={}@{}, opt={}", new Object[] {
                     profileName,
-                    url, maxConnections,
-                    fetchSize, insertThreads,
+                    url, provider.getClass().getName(), maxConnections,
+                    fetchSize, fetchThreads,
                     insertSize, insertThreads,
                     optimizations,
             });
@@ -194,6 +201,39 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                 profileName, connections,
                 fetchSize, insertSize, fetchThreads, insertThreads,
                 optimizations);
+    }
+
+    private static ConnectionPool.Provider extractProvider(
+            ProcessorContext context, String profileName, Map<String, String> properties, String key) {
+        String value = properties.remove(key);
+        if (value == null) {
+            return new BasicConnectionPool.Provider();
+        }
+        try {
+            Class<?> aClass = Class.forName(value, false, context.getClassLoader());
+            if (ConnectionPool.Provider.class.isAssignableFrom(aClass)) {
+                return (ConnectionPool.Provider) aClass.newInstance();
+            }
+            for (Class<?> inner : aClass.getDeclaredClasses()) {
+                if (ConnectionPool.Provider.class.isAssignableFrom(inner)
+                        && inner.isInterface() == false
+                        && Modifier.isPublic(inner.getModifiers())
+                        && Modifier.isStatic(inner.getModifiers())
+                        && Modifier.isAbstract(inner.getModifiers()) == false
+                        && inner.isSynthetic() == false) {
+                    return (ConnectionPool.Provider) inner.newInstance();
+                }
+            }
+            throw new IllegalArgumentException(MessageFormat.format(
+                    "failed to resolve connection pool class: {1} ({0})",
+                    qualified(profileName, key),
+                    value));
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException(MessageFormat.format(
+                    "failed to resolve connection pool class: {1} ({0})",
+                    qualified(profileName, key),
+                    value), e);
+        }
     }
 
     private static Map<String, Map<String, String>> getProfiles(Map<String, String> flat) {

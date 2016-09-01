@@ -17,6 +17,7 @@ package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.util.Map;
 import java.util.OptionalInt;
 
 import com.asakusafw.dag.utils.common.InterruptibleIo;
@@ -50,6 +51,24 @@ public interface ConnectionPool extends InterruptibleIo {
      * @throws InterruptedException if interrupted while acquiring a handle
      */
     Handle acquire() throws IOException, InterruptedException;
+
+    /**
+     * Provides {@link ConnectionPool} instance.
+     * Each {@link ConnectionPool} should have a nested {@code Provider} class which implements this interface.
+     * @since 0.2.0
+     */
+    @FunctionalInterface
+    interface Provider {
+
+        /**
+         * Creates a new instance.
+         * @param url the JDBC URL
+         * @param properties the JDBC properties
+         * @param maxConnections the number of max connections
+         * @return the created instance
+         */
+        ConnectionPool newInstance(String url, Map<String, String> properties, int maxConnections);
+    }
 
     /**
      * JDBC connection handle for {@link ConnectionPool}.

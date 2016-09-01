@@ -20,6 +20,8 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.util.Map;
 import java.util.OptionalInt;
 
 import org.junit.Test;
@@ -29,6 +31,7 @@ import com.asakusafw.dag.api.processor.extension.ProcessorContextExtension;
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
+import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
 import com.asakusafw.dag.utils.common.Lang;
 import com.sun.tools.javac.util.ServiceLoader;
 
@@ -97,6 +100,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
                 q("a", KEY_INPUT_THREADS), 3,
                 q("a", KEY_OUTPUT_THREADS), -1,
                 q("a", KEY_PROPERTIES + ".testing"), "OK",
+                q("a", KEY_POOL_CLASS), BasicConnectionPool.class.getName(),
         });
         JdbcProfile profile = environment.getProfile("a");
         try (ConnectionPool.Handle ha = profile.acquire();
@@ -108,6 +112,78 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getBatchInsertSize().getAsInt(), is(2));
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(3));
         assertThat(profile.getMaxOutputConcurrency(), is(OptionalInt.empty()));
+    }
+
+    /**
+     * w/ custom connection pool.
+     * @throws Exception if failed
+     */
+    @Test
+    public void custom_connection_pool() throws Exception {
+        JdbcEnvironment environment = build(new Object[] {
+                q("a", KEY_URL), h2.getJdbcUrl(),
+                q("a", KEY_POOL_CLASS), Custom.class.getName(),
+        });
+        JdbcProfile profile = environment.getProfile("a");
+        try (ConnectionPool.Handle handle = profile.acquire()) {
+            assertThat(handle, is(instanceOf(Custom.H.class)));
+        }
+    }
+
+    /**
+     * w/ custom connection pool, specifying provider class directly.
+     * @throws Exception if failed
+     */
+    @Test
+    public void custom_connection_pool_provider() throws Exception {
+        JdbcEnvironment environment = build(new Object[] {
+                q("a", KEY_URL), h2.getJdbcUrl(),
+                q("a", KEY_POOL_CLASS), Custom.P.class.getName(),
+        });
+        JdbcProfile profile = environment.getProfile("a");
+        try (ConnectionPool.Handle handle = profile.acquire()) {
+            assertThat(handle, is(instanceOf(Custom.H.class)));
+        }
+    }
+
+    @SuppressWarnings("javadoc")
+    public static class Custom implements ConnectionPool {
+
+        @Override
+        public Handle acquire() throws IOException, InterruptedException {
+            return new H();
+        }
+
+        @Override
+        public String getUrl() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void close() {
+            return;
+        }
+
+        public static class P implements Provider {
+
+            @Override
+            public ConnectionPool newInstance(String url, Map<String, String> properties, int maxConnections) {
+                return new Custom();
+            }
+        }
+
+        public static class H implements ConnectionPool.Handle {
+
+            @Override
+            public Connection getConnection() throws IOException, InterruptedException {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void close() throws IOException, InterruptedException {
+                return;
+            }
+        }
     }
 
     private static String q(String profile, String key) {

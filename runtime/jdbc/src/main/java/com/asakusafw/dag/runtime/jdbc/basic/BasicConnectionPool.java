@@ -169,6 +169,18 @@ public class BasicConnectionPool implements ConnectionPool {
         }
     }
 
+    /**
+     * Provides {@link BasicConnectionPool} instance.
+     * @since 0.2.0
+     */
+    public static class Provider implements ConnectionPool.Provider {
+
+        @Override
+        public ConnectionPool newInstance(String url, Map<String, String> properties, int maxConnections) {
+            return new BasicConnectionPool(url, properties, maxConnections);
+        }
+    }
+
     private class BasicHandle implements Handle {
 
         private final AtomicReference<Connection> connection;
