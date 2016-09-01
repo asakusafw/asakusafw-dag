@@ -138,6 +138,12 @@ public class BasicConnectionPool implements ConnectionPool {
 
     void release(Connection connection) throws IOException {
         try {
+            if (connection == null) {
+                return;
+            }
+            if (connection.isClosed() == false && connection.getAutoCommit() == false) {
+                connection.rollback();
+            }
             synchronized (cached) {
                 if (poolClosed) {
                     connection.close();
@@ -178,10 +184,7 @@ public class BasicConnectionPool implements ConnectionPool {
 
         @Override
         public void close() throws IOException, InterruptedException {
-            Connection conn = connection.getAndSet(null);
-            if (conn != null) {
-                BasicConnectionPool.this.release(conn);
-            }
+            BasicConnectionPool.this.release(connection.getAndSet(null));
         }
     }
 }

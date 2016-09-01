@@ -44,6 +44,7 @@ public interface ConnectionPool extends InterruptibleIo {
     /**
      * Returns a handle of the connection pool entry.
      * This may block until a handle is available.
+     * The handle will roll-back uncommitted transactions when the handle will be closed.
      * @return the acquired handle
      * @throws IOException if I/O error was occurred while acquiring a handle
      * @throws InterruptedException if interrupted while acquiring a handle
