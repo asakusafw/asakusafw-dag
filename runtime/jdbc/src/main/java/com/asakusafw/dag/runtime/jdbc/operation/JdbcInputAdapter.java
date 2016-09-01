@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.asakusafw.bridge.stage.StageInfo;
+import com.asakusafw.dag.api.counter.CounterRepository;
 import com.asakusafw.dag.api.processor.ObjectReader;
 import com.asakusafw.dag.api.processor.TaskInfo;
 import com.asakusafw.dag.api.processor.TaskProcessorContext;
@@ -46,6 +47,8 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
     private final List<Spec> specs = new ArrayList<>();
 
+    private final CounterRepository counterRoot;
+
     /**
      * Creates a new instance.
      * @param context the current context
@@ -57,6 +60,8 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
         JdbcEnvironment environment = context.getResource(JdbcEnvironment.class)
                 .orElseThrow(IllegalStateException::new);
         this.jdbc = new JdbcContext.Basic(environment, stage::resolveUserVariables);
+        this.counterRoot = context.getResource(CounterRepository.class)
+                .orElse(CounterRepository.DETACHED);
     }
 
     /**
@@ -88,10 +93,11 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
     public TaskSchedule getSchedule() throws IOException, InterruptedException {
         List<Task> tasks = new ArrayList<>();
         for (Spec spec : specs) {
+            JdbcCounterGroup counter = counterRoot.get(JdbcCounterGroup.CATEGORY_INPUT, spec.id);
             JdbcInputDriver driver = spec.provider.apply(jdbc);
             List<? extends Partition> partitions = driver.getPartitions();
             for (JdbcInputDriver.Partition partition : partitions) {
-                tasks.add(new Task(partition));
+                tasks.add(new Task(partition, counter));
             }
         }
         return new BasicTaskSchedule(tasks);
@@ -133,13 +139,17 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
         private final JdbcInputDriver.Partition partition;
 
-        Task(Partition partition) {
+        private final JdbcCounterGroup counter;
+
+        Task(Partition partition, JdbcCounterGroup counter) {
             Arguments.requireNonNull(partition);
+            Arguments.requireNonNull(counter);
             this.partition = partition;
+            this.counter = counter;
         }
 
         Driver newDriver() throws IOException, InterruptedException {
-            return new Driver(partition.open());
+            return new Driver(partition.open(), counter);
         }
     }
 
@@ -148,9 +158,14 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
         private final ObjectReader reader;
 
-        Driver(ObjectReader reader) {
+        private final JdbcCounterGroup counter;
+
+        private long count;
+
+        Driver(ObjectReader reader, JdbcCounterGroup counter) {
             assert reader != null;
             this.reader = reader;
+            this.counter = counter;
         }
 
         @Override
@@ -160,7 +175,11 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
         @Override
         public boolean next() throws IOException, InterruptedException {
-            return reader.nextObject();
+            if (reader.nextObject()) {
+                count++;
+                return true;
+            }
+            return false;
         }
 
         @SuppressWarnings("unchecked")
@@ -172,6 +191,8 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
         @Override
         public void close() throws IOException, InterruptedException {
             reader.close();
+            counter.add(count);
+            count = 0;
         }
     }
 }

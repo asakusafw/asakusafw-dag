@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.asakusafw.bridge.stage.StageInfo;
+import com.asakusafw.dag.api.counter.CounterRepository;
 import com.asakusafw.dag.api.processor.ObjectReader;
 import com.asakusafw.dag.api.processor.ObjectWriter;
 import com.asakusafw.dag.api.processor.TaskProcessor;
@@ -91,12 +92,15 @@ public class JdbcOutputProcessor implements VertexProcessor {
                 .orElseThrow(IllegalStateException::new);
         JdbcEnvironment environment = context.getResource(JdbcEnvironment.class)
                 .orElseThrow(IllegalStateException::new);
+        JdbcCounterGroup counter = context.getResource(CounterRepository.class)
+                .orElse(CounterRepository.DETACHED)
+                .get(JdbcCounterGroup.CATEGORY_OUTPUT, spec.id);
 
         JdbcOutputDriver driver = spec.provider.apply(new JdbcContext.Basic(environment, stage::resolveUserVariables));
         driver.initialize();
 
         this.maxConcurrency = driver.getMaxConcurrency();
-        this.lazy = () -> new Task(spec.id, driver);
+        this.lazy = () -> new Task(spec.id, driver, counter);
 
         return Optional.empty();
     }
@@ -136,11 +140,19 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
         private final JdbcOutputDriver driver;
 
+        private final JdbcCounterGroup counter;
+
         private ObjectWriter output;
 
-        Task(String id, JdbcOutputDriver driver) {
+        private long count;
+
+        Task(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
+            Arguments.requireNonNull(id);
+            Arguments.requireNonNull(driver);
+            Arguments.requireNonNull(counter);
             this.id = id;
             this.driver = driver;
+            this.counter = counter;
         }
 
         @Override
@@ -151,6 +163,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
             }
             try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME)) {
                 while (reader.nextObject()) {
+                    count++;
                     Object obj = reader.getObject();
                     output.putObject(obj);
                 }
@@ -167,6 +180,8 @@ public class JdbcOutputProcessor implements VertexProcessor {
             if (output != null) {
                 output.close();
                 output = null;
+                counter.add(count);
+                count = 0;
             }
         }
 
