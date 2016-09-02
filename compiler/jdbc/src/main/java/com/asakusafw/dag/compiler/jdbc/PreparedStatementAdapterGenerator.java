@@ -64,6 +64,16 @@ public final class PreparedStatementAdapterGenerator {
     }
 
     /**
+     * Creates and adds a {@link ResultSetAdapter} class.
+     * @param context the current context
+     * @param spec the specification of the target class
+     * @return the generated class, or cached one
+     */
+    public static ClassDescription get(ClassGeneratorContext context, Spec spec) {
+        return context.addClassFile(generate(context, spec));
+    }
+
+    /**
      * Creates a {@link ResultSetAdapter} class.
      * @param context the current context
      * @param spec the specification of the target class

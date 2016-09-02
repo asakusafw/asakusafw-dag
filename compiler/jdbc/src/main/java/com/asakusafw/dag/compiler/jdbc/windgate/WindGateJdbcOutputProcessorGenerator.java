@@ -19,6 +19,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -26,9 +27,9 @@ import org.objectweb.asm.Type;
 
 import com.asakusafw.dag.compiler.codegen.AsmUtil.LocalVarRef;
 import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
+import com.asakusafw.dag.compiler.codegen.SupplierGenerator;
 import com.asakusafw.dag.compiler.jdbc.PreparedStatementAdapterGenerator;
 import com.asakusafw.dag.compiler.model.ClassData;
-import com.asakusafw.dag.runtime.jdbc.PreparedStatementAdapter;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcOutputProcessor;
 import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -84,11 +85,7 @@ public final class WindGateJdbcOutputProcessorGenerator {
             getConst(v, spec.model.getProfileName());
             getConst(v, spec.model.getTableName());
             getList(v, Lang.project(spec.model.getColumnMappings(), Tuple::left));
-            getNew(v, context.addClassFile(PreparedStatementAdapterGenerator.generate(
-                    context,
-                    new PreparedStatementAdapterGenerator.Spec(
-                            spec.model.getDataType(),
-                            Lang.project(spec.model.getColumnMappings(), Tuple::right)))));
+            getNew(v, getAdapter(context, spec));
             v.visitMethodInsn(Opcodes.INVOKESTATIC,
                     typeOf(WindGateJdbcDirect.class).getInternalName(),
                     "output",
@@ -96,7 +93,7 @@ public final class WindGateJdbcOutputProcessorGenerator {
                             typeOf(String.class), // profileName
                             typeOf(String.class), // tableName
                             typeOf(List.class), // columnNames
-                            typeOf(PreparedStatementAdapter.class)), // adapter
+                            typeOf(Supplier.class)), // adapter
                     false);
             Lang.forEach(Optionals.of(spec.model.getCustomTruncate()), s -> {
                 getConst(v, s);
@@ -125,6 +122,14 @@ public final class WindGateJdbcOutputProcessorGenerator {
         });
         writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
+    }
+
+    private static ClassDescription getAdapter(ClassGeneratorContext context, Spec spec) {
+        return SupplierGenerator.get(context, PreparedStatementAdapterGenerator.get(
+                context,
+                new PreparedStatementAdapterGenerator.Spec(
+                        spec.model.getDataType(),
+                        Lang.project(spec.model.getColumnMappings(), Tuple::right))));
     }
 
     /**

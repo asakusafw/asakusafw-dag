@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,11 +52,30 @@ import com.asakusafw.runtime.util.VariableTable;
 public abstract class JdbcDagTestRoot {
 
     /**
+     * Table name.
+     */
+    public static final String TABLE = "KSV";
+
+    /**
+     * Columns.
+     */
+    public static final List<String> COLUMNS =
+            Collections.unmodifiableList(Arrays.asList("M_KEY", "M_SORT", "M_VALUE"));
+
+    /**
+     * Select statement.
+     */
+    public static final String SELECT = String.format("SELECT %s FROM %s",
+            String.join(", ", COLUMNS),
+            TABLE,
+            COLUMNS.get(0));
+
+    /**
      * H2 resource.
      */
     @Rule
     public final H2Resource h2 = new H2Resource("cp")
-        .with("CREATE TABLE KSV(M_KEY BIGINT, M_SORT DECIMAL(18,2), M_VALUE VARCHAR(256))");
+        .with("CREATE TABLE KSV(M_KEY BIGINT NOT NULL, M_SORT DECIMAL(18,2), M_VALUE VARCHAR(256))");
 
     /**
      * Closes resources.
@@ -75,6 +95,10 @@ public abstract class JdbcDagTestRoot {
     final Closer closer = new Closer();
 
     private final Set<String> options = new LinkedHashSet<>();
+
+    private int maxInputConcurrency = -1;
+
+    private int maxOutputConcurrency = -1;
 
     /**
      * Adds a resource to be closed after this test case.
@@ -107,6 +131,16 @@ public abstract class JdbcDagTestRoot {
     }
 
     /**
+     * Sets concurrency.
+     * @param input input concurrency
+     * @param output output concurrency
+     */
+    public void concurrency(int input, int output) {
+        this.maxInputConcurrency = input;
+        this.maxOutputConcurrency = output;
+    }
+
+    /**
      * Creates a new environment.
      * @param profileNames the profile names
      * @return the environment
@@ -116,7 +150,8 @@ public abstract class JdbcDagTestRoot {
         for (String name : profileNames) {
             profiles.add(new JdbcProfile(
                     name, pool(1),
-                    -1, -1, -1, -1,
+                    -1, -1,
+                    maxInputConcurrency, maxOutputConcurrency,
                     options));
         }
         return new JdbcEnvironment(profiles);
@@ -198,11 +233,24 @@ public abstract class JdbcDagTestRoot {
      * @param key the key
      * @param sort the sort as string
      * @param value the value
+     * @return the inserted record
      * @throws SQLException if error was occurred
      */
-    public void insert(long key, String sort, String value) throws SQLException {
+    public KsvModel insert(long key, String sort, String value) throws SQLException {
         try (Connection c = h2.open()) {
-            insert(c, key, sort, value);
+            return insert(c, key, sort, value);
+        }
+    }
+
+    /**
+     * Inserts a new record into {@code KSV} table.
+     * @param model the model
+     * @return the inserted record
+     * @throws SQLException if error was occurred
+     */
+    public KsvModel insert(KsvModel model) throws SQLException {
+        try (Connection c = h2.open()) {
+            return insert(c, model.getKey(), model.getSort(), model.getValue());
         }
     }
 
@@ -212,13 +260,14 @@ public abstract class JdbcDagTestRoot {
      * @param key the key
      * @param sort the sort as string
      * @param value the value
+     * @return the inserted record
      * @throws SQLException if error was occurred
      */
-    public void insert(Connection connection, long key, String sort, String value) throws SQLException {
-        insert(connection, key, sort == null ? null : new BigDecimal(sort), value);
+    public KsvModel insert(Connection connection, long key, String sort, String value) throws SQLException {
+        return insert(connection, key, sort == null ? null : new BigDecimal(sort), value);
     }
 
-    private void insert(Connection connection, long key, BigDecimal sort, String value) throws SQLException {
+    private KsvModel insert(Connection connection, long key, BigDecimal sort, String value) throws SQLException {
         String sql = "INSERT INTO KSV(M_KEY, M_SORT, M_VALUE) VALUES(?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, key);
@@ -227,6 +276,7 @@ public abstract class JdbcDagTestRoot {
             statement.execute();
             connection.commit();
         }
+        return new KsvModel(key, sort, value);
     }
 
     /**
@@ -239,12 +289,26 @@ public abstract class JdbcDagTestRoot {
     public List<KsvModel> get(JdbcInputDriver driver) throws IOException, InterruptedException {
         List<KsvModel> results = new ArrayList<>();
         for (JdbcInputDriver.Partition partition : driver.getPartitions()) {
-            try (ObjectReader reader = partition.open()) {
-                while (reader.nextObject()) {
-                    results.add(new KsvModel((KsvModel) reader.getObject()));
-                }
+            results.addAll(get(partition));
+        }
+        return results;
+    }
+
+    /**
+     * Returns values from the partition.
+     * @param partition the partition
+     * @return the obtained value
+     * @throws IOException if error was occurred
+     * @throws InterruptedException if interrupted
+     */
+    public List<KsvModel> get(JdbcInputDriver.Partition partition) throws IOException, InterruptedException {
+        List<KsvModel> results = new ArrayList<>();
+        try (ObjectReader reader = partition.open()) {
+            while (reader.nextObject()) {
+                results.add(new KsvModel((KsvModel) reader.getObject()));
             }
         }
+        results.sort((a, b) -> Long.compare(a.getKey(), b.getKey()));
         return results;
     }
 

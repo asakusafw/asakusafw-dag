@@ -16,14 +16,15 @@
 package com.asakusafw.dag.runtime.jdbc.basic;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.api.processor.ObjectWriter;
-import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
@@ -48,27 +49,27 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
 
     private final String sql;
 
-    private final PreparedStatementAdapter<?> adapter;
+    private final Supplier<? extends PreparedStatementAdapter<?>> adapters;
 
     /**
      * Creates a new instance.
      * @param profile the target JDBC profile
      * @param initializer the output initializer (nullable)
      * @param sql the insert statement with place-holders
-     * @param adapter the prepared statement adapter
+     * @param adapters the prepared statement adapter provider
      */
     public BasicJdbcOutputDriver(
             JdbcProfile profile,
             JdbcOperationDriver initializer,
             String sql,
-            PreparedStatementAdapter<?> adapter) {
+            Supplier<? extends PreparedStatementAdapter<?>> adapters) {
         Arguments.requireNonNull(profile);
         Arguments.requireNonNull(sql);
-        Arguments.requireNonNull(adapter);
+        Arguments.requireNonNull(adapters);
         this.profile = profile;
         this.initializer = initializer;
         this.sql = sql;
-        this.adapter = adapter;
+        this.adapters = adapters;
     }
 
     @Override
@@ -89,10 +90,10 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
         LOG.debug("JDBC output ({}): {}", profile, sql);
         int windowSize = profile.getBatchInsertSize().orElse(DEFAULT_INSERT_SIZE);
         try (Closer closer = new Closer()) {
-            ConnectionPool.Handle handle = closer.add(profile.acquire());
-            PreparedStatement statement = handle.getConnection().prepareStatement(sql);
+            Connection connection = closer.add(profile.acquire()).getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql);
             closer.add(JdbcUtil.wrap(statement::close));
-            return new BasicAppendCursor(statement, adapter, windowSize, closer.move());
+            return new BasicAppendCursor(statement, adapters.get(), windowSize, closer.move());
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
         }

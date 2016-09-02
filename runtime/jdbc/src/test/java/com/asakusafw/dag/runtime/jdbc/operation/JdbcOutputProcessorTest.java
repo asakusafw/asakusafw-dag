@@ -31,6 +31,7 @@ import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
+import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Action;
 
 /**
@@ -76,9 +77,9 @@ public class JdbcOutputProcessorTest extends JdbcDagTestRoot {
     private JdbcOutputDriver driver(JdbcProfile profile) {
         return new BasicJdbcOutputDriver(
                 profile,
-                new BasicJdbcOperationDriver(profile, "TRUNCATE TABLE KSV"),
-                "INSERT INTO KSV (M_KEY, M_SORT, M_VALUE) VALUES (?, ?, ?)",
-                new KsvJdbcAdapter());
+                new BasicJdbcOperationDriver(profile, JdbcUtil.getTruncateStatement(TABLE)),
+                JdbcUtil.getInsertStatement(TABLE, COLUMNS),
+                KsvJdbcAdapter::new);
     }
 
     private void run(Action<JdbcOutputProcessor, Exception> config, KsvModel... values) {

@@ -89,11 +89,7 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
     }
 
     private BasicJdbcInputDriver driver(JdbcProfile profile) {
-        BasicJdbcInputDriver driver = new BasicJdbcInputDriver(
-                profile,
-                "SELECT * FROM KSV ORDER BY M_KEY",
-                new KsvJdbcAdapter());
-        return driver;
+        return new BasicJdbcInputDriver(profile, SELECT, KsvJdbcAdapter::new);
     }
 
     private static List<KsvModel> collect(JdbcInputAdapter adapter) throws IOException, InterruptedException {

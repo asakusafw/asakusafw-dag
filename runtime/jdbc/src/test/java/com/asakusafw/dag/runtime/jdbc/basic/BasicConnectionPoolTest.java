@@ -48,7 +48,7 @@ public class BasicConnectionPoolTest extends JdbcDagTestRoot {
                 insert(handle.getConnection(), 1, "1.0", "Hello1");
             }
         }
-        assertThat(h2.count("KSV"), is(1));
+        assertThat(h2.count(TABLE), is(1));
     }
 
     /**
@@ -68,7 +68,7 @@ public class BasicConnectionPoolTest extends JdbcDagTestRoot {
                 insert(handle.getConnection(), 3, "3.0", "Hello3");
             }
         }
-        assertThat(h2.count("KSV"), is(3));
+        assertThat(h2.count(TABLE), is(3));
     }
 
     /**
@@ -86,7 +86,7 @@ public class BasicConnectionPoolTest extends JdbcDagTestRoot {
                 insert(handle.getConnection(), 2, "2.0", "Hello2");
             }
         }
-        assertThat(h2.count("KSV"), is(2));
+        assertThat(h2.count(TABLE), is(2));
     }
 
     /**
@@ -106,6 +106,6 @@ public class BasicConnectionPoolTest extends JdbcDagTestRoot {
                 }
             }
         }
-        assertThat(h2.count("KSV"), is(3));
+        assertThat(h2.count(TABLE), is(3));
     }
 }

@@ -45,6 +45,12 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
 public abstract class JdbcDagCompilerTestRoot extends JdbcDagTestRoot {
 
     /**
+     * Columns mappings.
+     */
+    public static final List<Tuple<String, PropertyName>> MAPPINGS =
+            mappings("M_KEY:key", "M_SORT:sort", "M_VALUE:value");
+
+    /**
      * Classpath.
      */
     @Rule

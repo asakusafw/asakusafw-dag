@@ -20,6 +20,7 @@ import static com.asakusafw.dag.compiler.codegen.AsmUtil.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -27,9 +28,9 @@ import org.objectweb.asm.Type;
 
 import com.asakusafw.dag.compiler.codegen.AsmUtil.LocalVarRef;
 import com.asakusafw.dag.compiler.codegen.ClassGeneratorContext;
+import com.asakusafw.dag.compiler.codegen.SupplierGenerator;
 import com.asakusafw.dag.compiler.jdbc.ResultSetAdapterGenerator;
 import com.asakusafw.dag.compiler.model.ClassData;
-import com.asakusafw.dag.runtime.jdbc.ResultSetAdapter;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcInputAdapter;
 import com.asakusafw.dag.runtime.jdbc.util.WindGateJdbcDirect;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -111,11 +112,7 @@ public final class WindGateJdbcInputAdapterGenerator {
                 getConst(v, spec.model.getProfileName());
                 getConst(v, spec.model.getTableName());
                 getList(v, Lang.project(spec.model.getColumnMappings(), Tuple::left));
-                getNew(v, context.addClassFile(ResultSetAdapterGenerator.generate(
-                        context,
-                        new ResultSetAdapterGenerator.Spec(
-                                spec.model.getDataType(),
-                                Lang.project(spec.model.getColumnMappings(), Tuple::right)))));
+                getNew(v, getAdapter(context, spec));
                 v.visitMethodInsn(Opcodes.INVOKESTATIC,
                         typeOf(WindGateJdbcDirect.class).getInternalName(),
                         "input",
@@ -123,7 +120,7 @@ public final class WindGateJdbcInputAdapterGenerator {
                                 typeOf(String.class), // profileName
                                 typeOf(String.class), // tableName
                                 typeOf(List.class), // columnNames
-                                typeOf(ResultSetAdapter.class)), // adapter
+                                typeOf(Supplier.class)), // adapter
                         false);
                 Lang.forEach(Optionals.of(spec.model.getCondition()), s -> {
                     getConst(v, s);
@@ -153,6 +150,14 @@ public final class WindGateJdbcInputAdapterGenerator {
         });
         writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
+    }
+
+    private static ClassDescription getAdapter(ClassGeneratorContext context, Spec spec) {
+        return SupplierGenerator.get(context, ResultSetAdapterGenerator.get(
+                context,
+                new ResultSetAdapterGenerator.Spec(
+                        spec.model.getDataType(),
+                        Lang.project(spec.model.getColumnMappings(), Tuple::right))));
     }
 
     /**

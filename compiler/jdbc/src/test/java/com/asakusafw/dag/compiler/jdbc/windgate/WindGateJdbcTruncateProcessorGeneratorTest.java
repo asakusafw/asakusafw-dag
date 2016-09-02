@@ -20,7 +20,6 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.util.Collections;
-import java.util.List;
 
 import org.junit.Test;
 
@@ -32,8 +31,6 @@ import com.asakusafw.dag.compiler.jdbc.windgate.WindGateJdbcTruncateProcessorGen
 import com.asakusafw.dag.compiler.model.ClassData;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
-import com.asakusafw.dag.utils.common.Tuple;
-import com.asakusafw.lang.compiler.model.PropertyName;
 
 /**
  * Test for {@link WindGateJdbcTruncateProcessorGenerator}.
@@ -41,11 +38,6 @@ import com.asakusafw.lang.compiler.model.PropertyName;
 public class WindGateJdbcTruncateProcessorGeneratorTest extends JdbcDagCompilerTestRoot {
 
     private static final String PROFILE = "testing";
-
-    private static final String TABLE = "KSV";
-
-    private static final List<Tuple<String, PropertyName>> MAPPINGS =
-            mappings("M_KEY:key", "M_SORT:sort", "M_VALUE:value");
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
 

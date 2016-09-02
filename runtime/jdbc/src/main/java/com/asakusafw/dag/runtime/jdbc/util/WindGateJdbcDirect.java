@@ -15,6 +15,7 @@
  */
 package com.asakusafw.dag.runtime.jdbc.util;
 
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -22,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
@@ -33,6 +36,7 @@ import com.asakusafw.dag.runtime.jdbc.ResultSetAdapter;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOutputDriver;
+import com.asakusafw.dag.runtime.jdbc.basic.SplitJdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcContext;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Optionals;
@@ -42,6 +46,11 @@ import com.asakusafw.dag.utils.common.Optionals;
  * @since 0.2.0
  */
 public final class WindGateJdbcDirect {
+
+    /**
+     * Copy of {@code com.asakusafw.windgate.core.vocabulary.JdbcProcess.OptionSymbols.CORE_SPLIT_PREFIX}.
+     */
+    static final String OPTIMIAZATION_CORE_SPLIT_PREFIX = "CORE_SPLIT_BY:"; //$NON-NLS-1$
 
     /**
      * Copy of {@code com.asakusafw.windgate.core.vocabulary.JdbcProcess.OptionSymbols.ORACLE_DIRPATH}.
@@ -57,15 +66,15 @@ public final class WindGateJdbcDirect {
      * @param profileName the profile name
      * @param tableName the target table name
      * @param columnNames the target column names
-     * @param jdbcAdapter the JDBC adapter
+     * @param adapters the JDBC adapter provider
      * @return the created builder
      */
     public static InputBuilder input(
             String profileName,
             String tableName,
             List<String> columnNames,
-            ResultSetAdapter<?> jdbcAdapter) {
-        return new InputBuilder(profileName, tableName, columnNames, jdbcAdapter);
+            Supplier<? extends ResultSetAdapter<?>> adapters) {
+        return new InputBuilder(profileName, tableName, columnNames, adapters);
     }
 
     static Function<? super JdbcContext, ? extends JdbcInputDriver> input(
@@ -73,14 +82,59 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             String condition,
-            ResultSetAdapter<?> jdbcAdapter,
+            Supplier<? extends ResultSetAdapter<?>> adapters,
             Set<String> options) {
         return context -> {
-            JdbcProfile profile = getProfile(context, profileName);
+            JdbcProfile profile = context.getEnvironment().getProfile(profileName);
             Optional<String> cond = resolve(context, condition);
-            String query = buildSelectStatement(profile, tableName, columnNames, cond, options);
-            return new BasicJdbcInputDriver(profile, query, jdbcAdapter);
+            Optional<String> split = getSplit(options)
+                    .filter(s -> profile.getMaxInputConcurrency().orElse(1) > 1);
+            return split
+                    .map(s -> buildSplitInput(profile, tableName, columnNames, cond, s, adapters, options))
+                    .orElseGet(() -> buildBasicInput(profile, tableName, columnNames, cond, adapters, options));
         };
+    }
+
+    private static Optional<String> getSplit(Set<String> options) {
+        List<String> columns = options.stream()
+                .filter(s -> s.startsWith(OPTIMIAZATION_CORE_SPLIT_PREFIX))
+                .map(s -> s.substring(OPTIMIAZATION_CORE_SPLIT_PREFIX.length()))
+                .map(String::trim)
+                .collect(Collectors.toList());
+        if (columns.size() >= 2) {
+            throw new IllegalArgumentException(MessageFormat.format(
+                    "conflict split column: {0}",
+                    columns));
+        }
+        return columns.stream().findAny();
+    }
+
+    private static JdbcInputDriver buildBasicInput(
+            JdbcProfile profile,
+            String tableName,
+            List<String> columnNames,
+            Optional<String> cond,
+            Supplier<? extends ResultSetAdapter<?>> adapters,
+            Set<String> options) {
+        String query = buildSelectStatement(profile, tableName, columnNames, cond, options);
+        return new BasicJdbcInputDriver(profile, query, adapters);
+    }
+
+    private static JdbcInputDriver buildSplitInput(
+            JdbcProfile profile,
+            String tableName,
+            List<String> columnNames,
+            Optional<String> cond,
+            String splitColumn,
+            Supplier<? extends ResultSetAdapter<?>> adapters,
+            Set<String> options) {
+        // FIXME options
+        int count = profile.getMaxInputConcurrency().orElse(1);
+        String condition = cond.orElse(null);
+        return new SplitJdbcInputDriver(
+                profile, tableName, columnNames,
+                splitColumn, count,
+                condition, adapters);
     }
 
     /**
@@ -88,15 +142,15 @@ public final class WindGateJdbcDirect {
      * @param profileName the profile name
      * @param tableName the target table name
      * @param columnNames the target column names
-     * @param jdbcAdapter the JDBC adapter
+     * @param adapters the JDBC adapter provider
      * @return the created builder
      */
     public static OutputBuilder output(
             String profileName,
             String tableName,
             List<String> columnNames,
-            PreparedStatementAdapter<?> jdbcAdapter) {
-        return new OutputBuilder(profileName, tableName, columnNames, jdbcAdapter);
+            Supplier<? extends PreparedStatementAdapter<?>> adapters) {
+        return new OutputBuilder(profileName, tableName, columnNames, adapters);
     }
 
     static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(
@@ -104,21 +158,21 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             String customTruncate,
-            PreparedStatementAdapter<?> jdbcAdapter,
+            Supplier<? extends PreparedStatementAdapter<?>> adapters,
             Set<String> options) {
         Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(tableName);
         Arguments.requireNonNull(columnNames);
-        Arguments.requireNonNull(jdbcAdapter);
+        Arguments.requireNonNull(adapters);
         Arguments.requireNonNull(options);
         return context -> {
-            JdbcProfile profile = getProfile(context, profileName);
+            JdbcProfile profile = context.getEnvironment().getProfile(profileName);
             JdbcOperationDriver truncate = new BasicJdbcOperationDriver(
                     profile,
                     resolve(context, customTruncate)
                         .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options)));
             String insert = buildInsertStatement(profile, tableName, columnNames, options);
-            return new BasicJdbcOutputDriver(profile, truncate, insert, jdbcAdapter);
+            return new BasicJdbcOutputDriver(profile, truncate, insert, adapters);
         };
     }
 
@@ -144,16 +198,12 @@ public final class WindGateJdbcDirect {
         Arguments.requireNonNull(columnNames);
         Arguments.requireNonNull(options);
         return context -> {
-            JdbcProfile profile = getProfile(context, profileName);
+            JdbcProfile profile = context.getEnvironment().getProfile(profileName);
             return new BasicJdbcOperationDriver(
                     profile,
                     resolve(context, customTruncate)
                         .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options)));
         };
-    }
-
-    private static JdbcProfile getProfile(JdbcContext context, String profileName) {
-        return context.getEnvironment().getProfile(profileName);
     }
 
     private static Optional<String> resolve(JdbcContext context, String pattern) {
@@ -170,7 +220,7 @@ public final class WindGateJdbcDirect {
             List<String> columnNames,
             Optional<String> condition,
             Set<String> options) {
-        return buildBasicSelectStatement(tableName, columnNames, condition);
+        return JdbcUtil.getSelectStatement(tableName, columnNames, condition.orElse(null));
     }
 
     private static String buildInsertStatement(
@@ -182,7 +232,7 @@ public final class WindGateJdbcDirect {
         if (oraDirPath) {
             return buildOracleDirPathInsertStatement(tableName, columnNames);
         } else {
-            return buildBasicInsertStatement(tableName, columnNames);
+            return JdbcUtil.getInsertStatement(tableName, columnNames);
         }
     }
 
@@ -191,47 +241,7 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             Set<String> options) {
-        return buildBasicTruncateStatement(tableName);
-    }
-
-    private static String buildBasicSelectStatement(
-            String tableName,
-            List<String> columnNames,
-            Optional<String> condition) {
-        StringBuilder buf = new StringBuilder();
-        buf.append("SELECT ");
-        buf.append(String.join(",", columnNames)); //$NON-NLS-1$
-        buf.append(" FROM ");
-        buf.append(tableName);
-        condition.ifPresent(s -> buf.append(" WHERE ").append(s));
-        return buf.toString();
-    }
-
-    private static String buildBasicTruncateStatement(String tableName) {
-        StringBuilder buf = new StringBuilder();
-        buf.append("TRUNCATE ");
-        buf.append("TABLE ");
-        buf.append(tableName);
-        return buf.toString();
-    }
-
-    private static String buildBasicInsertStatement(String tableName, List<String> columnNames) {
-        StringBuilder buf = new StringBuilder();
-        buf.append("INSERT ");
-        buf.append("INTO ");
-        buf.append(tableName);
-        buf.append(" (");
-        buf.append(String.join(",", columnNames)); //$NON-NLS-1$
-        buf.append(") ");
-        buf.append("VALUES ");
-        buf.append("(");
-        buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
-        buf.append(")");
-        return buf.toString();
-    }
-
-    private static List<String> placeholders(int count) {
-        return Collections.nCopies(count, "?"); //$NON-NLS-1$
+        return JdbcUtil.getTruncateStatement(tableName);
     }
 
     private static String buildOracleDirPathInsertStatement(String tableName, List<String> columnNames) {
@@ -250,6 +260,10 @@ public final class WindGateJdbcDirect {
         return buf.toString();
     }
 
+    private static List<String> placeholders(int count) {
+        return Collections.nCopies(count, "?"); //$NON-NLS-1$
+    }
+
     /**
      * A build for building {@link JdbcInputDriver}.
      * @since 0.2.0
@@ -262,21 +276,24 @@ public final class WindGateJdbcDirect {
 
         final List<String> columnNames;
 
-        final ResultSetAdapter<?> adapter;
+        final Supplier<? extends ResultSetAdapter<?>> adapters;
 
         String condition;
 
         final Set<String> options = new LinkedHashSet<>();
 
-        InputBuilder(String profileName, String tableName, List<String> columnNames, ResultSetAdapter<?> adapter) {
+        InputBuilder(
+                String profileName,
+                String tableName, List<String> columnNames,
+                Supplier<? extends ResultSetAdapter<?>> adapters) {
             Arguments.requireNonNull(profileName);
             Arguments.requireNonNull(tableName);
             Arguments.requireNonNull(columnNames);
-            Arguments.requireNonNull(adapter);
+            Arguments.requireNonNull(adapters);
             this.profileName = profileName;
             this.tableName = tableName;
             this.columnNames = Arguments.freeze(columnNames);
-            this.adapter = adapter;
+            this.adapters = adapters;
         }
 
         /**
@@ -324,7 +341,7 @@ public final class WindGateJdbcDirect {
          * @return the built object
          */
         public Function<? super JdbcContext, ? extends JdbcInputDriver> build() {
-            return input(profileName, tableName, columnNames, condition, adapter, options);
+            return input(profileName, tableName, columnNames, condition, adapters, options);
         }
 
         /**
@@ -349,22 +366,24 @@ public final class WindGateJdbcDirect {
 
         final List<String> columnNames;
 
-        final PreparedStatementAdapter<?> adapter;
+        final Supplier<? extends PreparedStatementAdapter<?>> adapters;
 
         String customTruncate;
 
         final Set<String> options = new LinkedHashSet<>();
 
         OutputBuilder(
-                String profileName, String tableName, List<String> columnNames, PreparedStatementAdapter<?> adapter) {
+                String profileName,
+                String tableName, List<String> columnNames,
+                Supplier<? extends PreparedStatementAdapter<?>> adapters) {
             Arguments.requireNonNull(profileName);
             Arguments.requireNonNull(tableName);
             Arguments.requireNonNull(columnNames);
-            Arguments.requireNonNull(adapter);
+            Arguments.requireNonNull(adapters);
             this.profileName = profileName;
             this.tableName = tableName;
             this.columnNames = Arguments.freeze(columnNames);
-            this.adapter = adapter;
+            this.adapters = adapters;
         }
 
         /**
@@ -412,7 +431,7 @@ public final class WindGateJdbcDirect {
          * @return the built object
          */
         public Function<? super JdbcContext, ? extends JdbcOutputDriver> build() {
-            return output(profileName, tableName, columnNames, customTruncate, adapter, options);
+            return output(profileName, tableName, columnNames, customTruncate, adapters, options);
         }
 
         /**

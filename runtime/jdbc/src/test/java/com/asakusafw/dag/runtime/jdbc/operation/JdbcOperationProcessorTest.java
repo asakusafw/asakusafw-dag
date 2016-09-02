@@ -27,6 +27,7 @@ import com.asakusafw.dag.api.processor.testing.VertexProcessorRunner;
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
+import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Action;
 
 /**
@@ -46,7 +47,7 @@ public class JdbcOperationProcessorTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         profile("testing", p -> {
-            run(c -> c.bind("t", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 2")));
+            run(c -> c.bind("t", new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 2"))));
         });
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),
@@ -66,9 +67,9 @@ public class JdbcOperationProcessorTest extends JdbcDagTestRoot {
         insert(5, null, "Hello5");
         profile("testing", p -> {
             run(c -> c
-                    .bind("t1", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 1"))
-                    .bind("t2", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 3"))
-                    .bind("t3", new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 5")));
+                    .bind("t1", new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 1")))
+                    .bind("t2", new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 3")))
+                    .bind("t3", new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 5"))));
         });
         assertThat(select(), contains(
                 new KsvModel(2, null, "Hello2"),

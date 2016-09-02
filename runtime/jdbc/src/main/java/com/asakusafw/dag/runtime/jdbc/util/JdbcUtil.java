@@ -18,6 +18,8 @@ package com.asakusafw.dag.runtime.jdbc.util;
 import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,132 @@ public final class JdbcUtil {
     }
 
     /**
+     * Returns a basic select statement.
+     * @param tableName the target table name
+     * @param columnNames the column names
+     * @return the build statement
+     */
+    public static String getSelectStatement(String tableName, List<String> columnNames) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("SELECT ");
+        buf.append(String.join(",", columnNames)); //$NON-NLS-1$
+        buf.append(" FROM ");
+        buf.append(tableName);
+        return buf.toString();
+    }
+
+    /**
+     * Returns a basic select statement.
+     * @param tableName the target table name
+     * @param columnNames the column names
+     * @param condition the condition expression (nullable)
+     * @return the build statement
+     */
+    public static String getSelectStatement(String tableName, List<String> columnNames, String condition) {
+        String body = getSelectStatement(tableName, columnNames);
+        if (condition == null) {
+            return body;
+        } else {
+            return new StringBuilder().append(body).append(" WHERE ").append(condition).toString();
+        }
+    }
+
+    /**
+     * Returns a basic insert statement.
+     * @param tableName the target table name
+     * @param columnNames the column names
+     * @return the built statement
+     */
+    public static String getInsertStatement(String tableName, List<String> columnNames) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("INSERT ");
+        buf.append("INTO ");
+        buf.append(tableName);
+        buf.append(" (");
+        buf.append(String.join(",", columnNames)); //$NON-NLS-1$
+        buf.append(") ");
+        buf.append("VALUES ");
+        buf.append("(");
+        buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
+        buf.append(")");
+        return buf.toString();
+    }
+
+    /**
+     * Returns a basic delete statement.
+     * @param tableName the target table name
+     * @param condition the condition expression (nullable)
+     * @return the build statement
+     */
+    public static String getDeleteStatement(String tableName, String condition) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("DELETE ");
+        buf.append("FROM ");
+        buf.append(tableName);
+        if (condition != null) {
+            buf.append(" WHERE ").append(condition);
+        }
+        return buf.toString();
+    }
+
+    /**
+     * Returns a basic truncate statement.
+     * @param tableName the target table name
+     * @return the build statement
+     */
+    public static String getTruncateStatement(String tableName) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("TRUNCATE ");
+        buf.append("TABLE ");
+        buf.append(tableName);
+        return buf.toString();
+    }
+
+    private static List<String> placeholders(int count) {
+        return Collections.nCopies(count, "?"); //$NON-NLS-1$
+    }
+
+    /**
+     * Returns SQL Date object from the Asakusa Date representation (elapsed days from epoch).
+     * @param value the Asakusa representation
+     * @param calendarBuffer the calendar buffer
+     * @return created SQL value
+     */
+    public static java.sql.Date toDate(int value, java.util.Calendar calendarBuffer) {
+        DateUtil.setDayToCalendar(value, calendarBuffer);
+        return new java.sql.Date(calendarBuffer.getTimeInMillis());
+    }
+
+    /**
+     * Returns Asakusa Date representation from the SQL Date object.
+     * @param date the SQL value
+     * @return the Asakusa representation
+     */
+    public static int fromDate(java.sql.Date date) {
+        return DateUtil.getDayFromDate(date);
+    }
+
+    /**
+     * Returns SQL Timestamp object from the Asakusa DateTime representation (elapsed days from epoch).
+     * @param value the Asakusa representation
+     * @param calendarBuffer the calendar buffer
+     * @return created SQL value
+     */
+    public static java.sql.Timestamp toTimestamp(long value, java.util.Calendar calendarBuffer) {
+        DateUtil.setSecondToCalendar(value, calendarBuffer);
+        return new java.sql.Timestamp(calendarBuffer.getTimeInMillis());
+    }
+
+    /**
+     * Returns Asakusa DateTime representation from the SQL Timestamp object.
+     * @param timestamp the SQL value
+     * @return the Asakusa representation
+     */
+    public static long fromTimestamp(java.sql.Timestamp timestamp) {
+        return DateUtil.getSecondFromDate(timestamp);
+    }
+
+    /**
      * Sets a {@link Date} value to placeholder.
      * @param statement the target statement
      * @param index the placeholder index
@@ -81,8 +209,7 @@ public final class JdbcUtil {
             int index,
             Date value,
             java.util.Calendar calendarBuffer) throws SQLException {
-        DateUtil.setDayToCalendar(value.getElapsedDays(), calendarBuffer);
-        statement.setDate(index, new java.sql.Date(calendarBuffer.getTimeInMillis()), calendarBuffer);
+        statement.setDate(index, toDate(value.getElapsedDays(), calendarBuffer), calendarBuffer);
     }
 
     /**
@@ -99,6 +226,6 @@ public final class JdbcUtil {
             DateTime value,
             java.util.Calendar calendarBuffer) throws SQLException {
         DateUtil.setSecondToCalendar(value.getElapsedSeconds(), calendarBuffer);
-        statement.setTimestamp(index, new java.sql.Timestamp(calendarBuffer.getTimeInMillis()), calendarBuffer);
+        statement.setTimestamp(index, toTimestamp(value.getElapsedSeconds(), calendarBuffer), calendarBuffer);
     }
 }

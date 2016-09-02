@@ -16,17 +16,18 @@
 package com.asakusafw.dag.runtime.jdbc.basic;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
 
 /**
  * A basic implementation of {@link JdbcOperationDriver}.
@@ -55,11 +56,13 @@ public class BasicJdbcOperationDriver implements JdbcOperationDriver {
     @Override
     public void perform() throws IOException, InterruptedException {
         LOG.debug("JDBC operation: {}", sql);
-        try (ConnectionPool.Handle handle = profile.acquire();
-                Statement statement = handle.getConnection().createStatement()) {
+        try (Closer closer = new Closer()) {
+            Connection connection = closer.add(profile.acquire()).getConnection();
+            Statement statement = connection.createStatement();
+            closer.add(JdbcUtil.wrap(statement::close));
             statement.execute(sql);
             LOG.debug("commit: {}", sql);
-            handle.getConnection().commit();
+            connection.commit();
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
         }

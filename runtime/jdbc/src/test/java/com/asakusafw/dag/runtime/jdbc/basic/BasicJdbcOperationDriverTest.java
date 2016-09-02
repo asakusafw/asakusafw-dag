@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
+import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 
 /**
  * Test for {@link BasicJdbcOperationDriver}.
@@ -38,7 +39,7 @@ public class BasicJdbcOperationDriverTest extends JdbcDagTestRoot {
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
         profile("testing", p -> {
-            new BasicJdbcOperationDriver(p, "DELETE KSV WHERE M_KEY = 2").perform();
+            new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 2")).perform();
         });
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),

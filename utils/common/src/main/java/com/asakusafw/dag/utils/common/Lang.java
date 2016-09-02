@@ -325,4 +325,32 @@ public final class Lang {
         }
         return true;
     }
+
+    /**
+     * Returns whether or not the two objects are equivalent.
+     * @param <T> the object type
+     * @param a the first object
+     * @param b the second object
+     * @param properties the properties
+     * @return {@code true} if the two objects are equivalent, otherwise {@code false}
+     * @since 0.2.0
+     */
+    public static <T> boolean equals(T a, Object b, List<? extends Function<? super T, ?>> properties) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null || a.getClass() != b.getClass()) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        T safeB = (T) b;
+        for (Function<? super T, ?> property : properties) {
+            Object pa = property.apply(a);
+            Object pb = property.apply(safeB);
+            if (!Objects.equals(pa, pb)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

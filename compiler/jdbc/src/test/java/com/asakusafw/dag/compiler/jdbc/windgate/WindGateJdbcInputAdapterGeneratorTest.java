@@ -42,8 +42,6 @@ import com.asakusafw.dag.runtime.adapter.InputHandler.InputSession;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcInputAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
-import com.asakusafw.dag.utils.common.Tuple;
-import com.asakusafw.lang.compiler.model.PropertyName;
 
 /**
  * Test for {@link WindGateJdbcInputAdapterGenerator}.
@@ -51,11 +49,6 @@ import com.asakusafw.lang.compiler.model.PropertyName;
 public class WindGateJdbcInputAdapterGeneratorTest extends JdbcDagCompilerTestRoot {
 
     private static final String PROFILE = "testing";
-
-    private static final String TABLE = "KSV";
-
-    private static final List<Tuple<String, PropertyName>> MAPPINGS =
-            mappings("M_KEY:key", "M_SORT:sort", "M_VALUE:value");
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
 
