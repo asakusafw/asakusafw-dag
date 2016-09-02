@@ -73,7 +73,6 @@ public final class JdbcUtil {
      * @param statement the target statement
      * @param index the placeholder index
      * @param value the target value
-     * @param valueBuffer a value buffer
      * @param calendarBuffer a calendar buffer
      * @throws SQLException if error was occurred
      */
@@ -81,11 +80,9 @@ public final class JdbcUtil {
             PreparedStatement statement,
             int index,
             Date value,
-            java.sql.Date valueBuffer,
             java.util.Calendar calendarBuffer) throws SQLException {
         DateUtil.setDayToCalendar(value.getElapsedDays(), calendarBuffer);
-        valueBuffer.setTime(calendarBuffer.getTimeInMillis());
-        statement.setDate(index, valueBuffer, calendarBuffer);
+        statement.setDate(index, new java.sql.Date(calendarBuffer.getTimeInMillis()), calendarBuffer);
     }
 
     /**
@@ -93,7 +90,6 @@ public final class JdbcUtil {
      * @param statement the target statement
      * @param index the placeholder index
      * @param value the target value
-     * @param valueBuffer a value buffer
      * @param calendarBuffer a calendar buffer
      * @throws SQLException if error was occurred
      */
@@ -101,10 +97,8 @@ public final class JdbcUtil {
             PreparedStatement statement,
             int index,
             DateTime value,
-            java.sql.Timestamp valueBuffer,
             java.util.Calendar calendarBuffer) throws SQLException {
         DateUtil.setSecondToCalendar(value.getElapsedSeconds(), calendarBuffer);
-        valueBuffer.setTime(calendarBuffer.getTimeInMillis());
-        statement.setTimestamp(index, valueBuffer, calendarBuffer);
+        statement.setTimestamp(index, new java.sql.Timestamp(calendarBuffer.getTimeInMillis()), calendarBuffer);
     }
 }

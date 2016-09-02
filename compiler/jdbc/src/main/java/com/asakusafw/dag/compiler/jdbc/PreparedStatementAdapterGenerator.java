@@ -86,18 +86,6 @@ public final class PreparedStatementAdapterGenerator {
             DataModelReference dataType, List<PropertyReference> properties) {
         ClassWriter writer = newWriter(target, Object.class, PreparedStatementAdapter.class);
 
-        Optional<FieldRef> dateBuf = properties.stream()
-                .map(PropertyReference::getType)
-                .map(PropertyTypeKind::fromOptionType)
-                .filter(Predicate.isEqual(PropertyTypeKind.DATE))
-                .findAny()
-                .map(k -> defineField(writer, target, "dateBuf", typeOf(java.sql.Date.class)));
-        Optional<FieldRef> timestampBuf = properties.stream()
-                .map(PropertyReference::getType)
-                .map(PropertyTypeKind::fromOptionType)
-                .filter(Predicate.isEqual(PropertyTypeKind.DATE_TIME))
-                .findAny()
-                .map(k -> defineField(writer, target, "timestampBuf", typeOf(java.sql.Timestamp.class)));
         Optional<FieldRef> calendarBuf = properties.stream()
                 .map(PropertyReference::getType)
                 .map(PropertyTypeKind::fromOptionType)
@@ -107,16 +95,6 @@ public final class PreparedStatementAdapterGenerator {
 
         defineEmptyConstructor(writer, Object.class, v -> {
             LocalVarRef self = new LocalVarRef(Opcodes.ALOAD, 0);
-            dateBuf.ifPresent(f -> {
-                self.load(v);
-                newDateLike(v, java.sql.Date.class);
-                putField(v, f);
-            });
-            timestampBuf.ifPresent(f -> {
-                self.load(v);
-                newDateLike(v, java.sql.Timestamp.class);
-                putField(v, f);
-            });
             calendarBuf.ifPresent(f -> {
                 self.load(v);
                 v.visitMethodInsn(Opcodes.INVOKESTATIC,
@@ -128,27 +106,16 @@ public final class PreparedStatementAdapterGenerator {
             });
         });
 
-        defineBody(writer, dataType, properties, dateBuf, timestampBuf, calendarBuf);
+        defineBody(writer, dataType, properties, calendarBuf);
 
         writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
     }
 
-    private static void newDateLike(MethodVisitor v, Class<? extends java.util.Date> aClass) {
-        v.visitTypeInsn(Opcodes.NEW, typeOf(aClass).getInternalName());
-        v.visitInsn(Opcodes.DUP);
-        getConst(v, 0L);
-        v.visitMethodInsn(Opcodes.INVOKESPECIAL,
-                typeOf(aClass).getInternalName(),
-                CONSTRUCTOR_NAME,
-                Type.getMethodDescriptor(Type.VOID_TYPE, typeOf(long.class)),
-                false);
-    }
-
     private static void defineBody(
             ClassWriter writer,
             DataModelReference dataType, List<PropertyReference> properties,
-            Optional<FieldRef> dateBuf, Optional<FieldRef> timestampBuf, Optional<FieldRef> calendarBuf) {
+            Optional<FieldRef> dateBuf) {
         MethodVisitor v = writer.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "drive", //$NON-NLS-1$
@@ -192,7 +159,7 @@ public final class PreparedStatementAdapterGenerator {
             row.load(v);
             getConst(v, columnIndex);
             option.load(v);
-            doSetValue(v, property, dateBuf, timestampBuf, calendarBuf);
+            doSetValue(v, property, dateBuf);
 
             // } @endIf
             v.visitLabel(endIf);
@@ -243,10 +210,7 @@ public final class PreparedStatementAdapterGenerator {
         }
     }
 
-    private static void doSetValue(
-            MethodVisitor method,
-            PropertyReference property,
-            Optional<FieldRef> dateBuf, Optional<FieldRef> timestampBuf, Optional<FieldRef> calendarBuf) {
+    private static void doSetValue(MethodVisitor method, PropertyReference property, Optional<FieldRef> calendarBuf) {
         // {PreparedStatement, index:int, +ValueOption}
         PropertyTypeKind kind = PropertyTypeKind.fromOptionType(property.getType());
         switch (kind) {
@@ -278,10 +242,10 @@ public final class PreparedStatementAdapterGenerator {
             doSetString(method, kind);
             break;
         case DATE:
-            doSetDateLike(method, kind, java.sql.Date.class, dateBuf.get(), calendarBuf.get());
+            doSetDateLike(method, kind, calendarBuf.get());
             break;
         case DATE_TIME:
-            doSetDateLike(method, kind, java.sql.Timestamp.class, timestampBuf.get(), calendarBuf.get());
+            doSetDateLike(method, kind, calendarBuf.get());
             break;
         default:
             throw new AssertionError(property);
@@ -314,16 +278,13 @@ public final class PreparedStatementAdapterGenerator {
                 true);
     }
 
-    private static void doSetDateLike(
-            MethodVisitor method,
-            PropertyTypeKind kind, Class<? extends java.util.Date> bufferType,
-            FieldRef valueBuf, FieldRef calendarBuf) {
+    private static void doSetDateLike(MethodVisitor method, PropertyTypeKind kind, FieldRef calendarBuf) {
         method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
                 typeOf(kind.getOptionType()).getInternalName(),
                 "get", //$NON-NLS-1$
                 Type.getMethodDescriptor(typeOf(kind.getRawType())),
                 false);
-        valueBuf.load(method);
+
         calendarBuf.load(method);
         method.visitMethodInsn(Opcodes.INVOKESTATIC,
                 typeOf(JdbcUtil.class).getInternalName(),
@@ -332,7 +293,6 @@ public final class PreparedStatementAdapterGenerator {
                         typeOf(PreparedStatement.class),
                         typeOf(int.class),
                         typeOf(kind.getRawType()),
-                        typeOf(bufferType),
                         typeOf(java.util.Calendar.class)),
                 true);
     }
