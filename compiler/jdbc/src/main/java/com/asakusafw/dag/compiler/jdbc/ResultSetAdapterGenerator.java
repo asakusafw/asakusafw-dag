@@ -161,12 +161,12 @@ public final class ResultSetAdapterGenerator {
             } else {
                 v.visitInsn(Opcodes.POP);
             }
-            doSetNull(v, buf);
+            doSetNull(v);
             v.visitJumpInsn(Opcodes.GOTO, endIf);
 
             // } else { @elseIf
             v.visitLabel(elseIf);
-            doSetValue(v, buf, property);
+            doSetValue(v, property);
 
             // } @endIf
             v.visitLabel(endIf);
@@ -181,7 +181,7 @@ public final class ResultSetAdapterGenerator {
             }
             buf.load(v);
             getOption(v, property);
-            doSetNull(v, buf);
+            doSetNull(v);
         }
 
         buf.load(v);
@@ -290,7 +290,7 @@ public final class ResultSetAdapterGenerator {
         }
     }
 
-    private static void doSetNull(MethodVisitor method, LocalVarRef buf) {
+    private static void doSetNull(MethodVisitor method) {
         method.visitMethodInsn(
                 Opcodes.INVOKEVIRTUAL,
                 typeOf(ValueOption.class).getInternalName(),
@@ -300,7 +300,7 @@ public final class ResultSetAdapterGenerator {
         method.visitInsn(Opcodes.POP);
     }
 
-    private static void doSetValue(MethodVisitor method, LocalVarRef buf, PropertyReference property) {
+    private static void doSetValue(MethodVisitor method, PropertyReference property) {
         PropertyTypeKind kind = PropertyTypeKind.fromOptionType(property.getType());
         switch (kind) {
         case BOOLEAN:

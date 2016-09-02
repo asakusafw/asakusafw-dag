@@ -168,7 +168,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                 throw new IllegalArgumentException(MessageFormat.format(
                         "failed to load JDBC driver class: {1} ({0})",
                         qualified(profileName, KEY_DRIVER),
-                        name));
+                        name), e);
             }
         });
         String url = extract(profileName, properties, KEY_URL);
@@ -276,7 +276,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                 .orElse(defaultValue);
     }
 
-    private static Set<String> extractSet(String profileName, Map<String, String> properties, String key) {
+    private static Set<String> extractSet(String profile, Map<String, String> properties, String key) {
         return Optionals.remove(properties, key)
                 .map(s -> Stream.of(s.split(","))
                         .map(String::trim)
