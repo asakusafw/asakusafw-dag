@@ -63,6 +63,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
             .add(java.sql.Types.SMALLINT)
             .add(java.sql.Types.INTEGER)
             .add(java.sql.Types.BIGINT)
+            .add(java.sql.Types.NUMERIC)
             .add(java.sql.Types.DECIMAL)
             .add(java.sql.Types.DATE)
             .add(java.sql.Types.TIMESTAMP)
@@ -157,8 +158,8 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
             Object min = null;
             Object max = null;
             if (rs.next()) {
-                min = rs.getObject(1);
-                max = rs.getObject(2);
+                min = getValue(rs, type, 1);
+                max = getValue(rs, type, 2);
             }
             if (LOG.isDebugEnabled()) {
                 LOG.debug("split stats: table={}, column={}:{}, range=[{}, {}]", new Object[] {
@@ -170,6 +171,16 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
             return Optionals.of(new Stats(type, nullable, scale, min, max));
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
+        }
+    }
+
+    private Object getValue(ResultSet rs, int type, int index) throws SQLException {
+        switch (type) {
+        case java.sql.Types.NUMERIC:
+        case java.sql.Types.DECIMAL:
+            return rs.getBigDecimal(index);
+        default:
+            return rs.getObject(index);
         }
     }
 
@@ -200,6 +211,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
             return computeBoundValues(((Number) stats.min).intValue(), ((Number) stats.max).intValue());
         case java.sql.Types.BIGINT:
             return computeBoundValues(((Number) stats.min).longValue(), ((Number) stats.max).longValue());
+        case java.sql.Types.NUMERIC:
         case java.sql.Types.DECIMAL:
             return computeBoundValues((BigDecimal) stats.min, (BigDecimal) stats.max, stats.scale);
         case java.sql.Types.DATE:
