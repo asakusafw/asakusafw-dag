@@ -93,7 +93,7 @@ public class BasicConnectionPool implements ConnectionPool {
     }
 
     @Override
-    public Handle acquire() throws IOException, InterruptedException {
+    public ConnectionPool.Handle acquire() throws IOException, InterruptedException {
         semaphore.acquire();
         boolean success = false;
         try {
@@ -118,7 +118,7 @@ public class BasicConnectionPool implements ConnectionPool {
             connection.clearWarnings();
             connection.setAutoCommit(false);
             success = true;
-            return new BasicHandle(connection);
+            return new Handle(connection);
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
         } finally {
@@ -137,10 +137,10 @@ public class BasicConnectionPool implements ConnectionPool {
     }
 
     void release(Connection connection) throws IOException {
+        if (connection == null) {
+            return;
+        }
         try {
-            if (connection == null) {
-                return;
-            }
             if (connection.isClosed() == false && connection.getAutoCommit() == false) {
                 connection.rollback();
             }
@@ -181,11 +181,11 @@ public class BasicConnectionPool implements ConnectionPool {
         }
     }
 
-    private class BasicHandle implements Handle {
+    private class Handle implements ConnectionPool.Handle {
 
         private final AtomicReference<Connection> connection;
 
-        BasicHandle(Connection connection) {
+        Handle(Connection connection) {
             this.connection = new AtomicReference<>(connection);
         }
 
