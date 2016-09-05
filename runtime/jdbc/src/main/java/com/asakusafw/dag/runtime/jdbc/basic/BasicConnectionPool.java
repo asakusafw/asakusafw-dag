@@ -20,11 +20,11 @@ import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -55,9 +55,9 @@ public class BasicConnectionPool implements ConnectionPool {
 
     private final Semaphore semaphore;
 
-    private final Queue<Connection> cached = new LinkedList<>();
+    private final Queue<Connection> cached = new ConcurrentLinkedQueue<>();
 
-    private boolean poolClosed = false;
+    private volatile boolean poolClosed = false;
 
     /**
      * Creates a new instance.
@@ -109,32 +109,17 @@ public class BasicConnectionPool implements ConnectionPool {
     @Override
     public ConnectionPool.Handle acquire() throws IOException, InterruptedException {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("acquiring connection from pool: {}/{}", rest(), size); //$NON-NLS-1$
+            LOG.debug("acquiring connection from pool: {}/{} ({})", rest(), size, cached.size()); //$NON-NLS-1$
         }
         semaphore.acquire();
         boolean success = false;
-        try {
-            Connection connection = null;
-            synchronized (cached) {
-                if (poolClosed) {
-                    throw new IOException("connection poll has been already closed");
-                }
-                while (cached.isEmpty() == false) {
-                    connection = cached.poll();
-                    if (connection.isClosed()) {
-                        connection.close();
-                        connection = null;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            if (connection == null) {
-                connection = acquire0();
-            }
+        try (Closer closer = new Closer()) {
+            Connection connection = acquire0();
+            closer.add(JdbcUtil.wrap(connection::close));
             connection.clearWarnings();
             connection.setAutoCommit(false);
             success = true;
+            closer.keep();
             return new Handle(connection);
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
@@ -145,7 +130,30 @@ public class BasicConnectionPool implements ConnectionPool {
         }
     }
 
-    private Connection acquire0() throws SQLException {
+    private Connection acquire0() throws IOException {
+        try {
+            while (true) {
+                if (poolClosed) {
+                    throw new IOException("connection poll has been already closed");
+                }
+                Connection connection = cached.poll();
+                if (connection != null) {
+                    if (connection.isClosed()) {
+                        connection.close();
+                        continue;
+                    } else {
+                        return connection;
+                    }
+                } else {
+                    return open();
+                }
+            }
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
+        }
+    }
+
+    private Connection open() throws SQLException {
         LOG.debug("opening connection: {}", url); //$NON-NLS-1$
         if (driver != null) {
             return driver.connect(url, properties);
@@ -154,26 +162,24 @@ public class BasicConnectionPool implements ConnectionPool {
         }
     }
 
-    void release(Connection connection) throws IOException {
+    void release(Connection connection) throws IOException, InterruptedException {
         if (connection == null) {
             return;
         }
-        try {
+        try (Closer closer = new Closer()) {
+            closer.add(JdbcUtil.wrap(connection::close));
             if (connection.isClosed() == false && connection.getAutoCommit() == false) {
                 connection.rollback();
             }
-            synchronized (cached) {
-                if (poolClosed) {
-                    connection.close();
-                } else {
-                    cached.add(connection);
-                }
+            if (poolClosed == false) {
+                closer.keep();
+                cached.add(connection);
             }
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
         } finally {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("releasing connection into pool: {}/{}", rest(), size); //$NON-NLS-1$
+                LOG.debug("releasing connection into pool: {}/{} ({})", rest(), size, cached.size()); //$NON-NLS-1$
             }
             semaphore.release();
         }
@@ -181,11 +187,15 @@ public class BasicConnectionPool implements ConnectionPool {
 
     @Override
     public void close() throws IOException, InterruptedException {
+        poolClosed = true;
         try (Closer closer = new Closer()) {
-            synchronized (cached) {
-                poolClosed = true;
-                cached.forEach(c -> closer.add(JdbcUtil.wrap(c::close)));
-                cached.clear();
+            while (true) {
+                Connection connection = cached.poll();
+                if (connection == null) {
+                    break;
+                } else {
+                    closer.add(JdbcUtil.wrap(connection::close));
+                }
             }
         }
     }
