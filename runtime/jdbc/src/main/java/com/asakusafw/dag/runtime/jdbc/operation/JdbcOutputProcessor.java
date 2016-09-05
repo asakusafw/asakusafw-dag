@@ -115,6 +115,13 @@ public class JdbcOutputProcessor implements VertexProcessor {
         return lazy.call();
     }
 
+    @Override
+    public String toString() {
+        return MessageFormat.format(
+                "JdbcOutput({0})", //$NON-NLS-1$
+                spec == null ? "?" : spec.id); //$NON-NLS-1$
+    }
+
     private static final class Spec {
 
         final String id;
