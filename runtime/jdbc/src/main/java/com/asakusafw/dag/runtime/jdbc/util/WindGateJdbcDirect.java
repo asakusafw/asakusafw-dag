@@ -250,7 +250,7 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             Set<String> options) {
-        OutputClearKind kind = OutputClearKind.fromOptions(profile.getAvailableOptions())
+        OutputClearKind kind = profile.getOption(OutputClearKind.class)
                 .orElse(OutputClearKind.TRUNCATE);
         switch (kind) {
         case KEEP:

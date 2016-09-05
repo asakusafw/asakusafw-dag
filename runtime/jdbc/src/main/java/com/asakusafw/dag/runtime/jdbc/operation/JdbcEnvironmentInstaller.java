@@ -23,7 +23,6 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -42,6 +41,7 @@ import com.asakusafw.dag.api.processor.ProcessorContext;
 import com.asakusafw.dag.api.processor.ProcessorContext.Editor;
 import com.asakusafw.dag.api.processor.extension.ProcessorContextExtension;
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
+import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
@@ -112,6 +112,11 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
     public static final String KEY_OUTPUT_CLEAR = "output.clear";
 
     /**
+     * The property sub-key of the output committing granularity.
+     */
+    public static final String KEY_OUTPUT_GRANULARITY = "output.granularity";
+
+    /**
      * The property sub-key of comma separated available optimization symbols.
      */
     public static final String KEY_OPTIMIZATIONS = "optimizations";
@@ -180,29 +185,21 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                         name), e);
             }
         });
-        Set<String> options = new LinkedHashSet<>();
         String url = extract(profileName, properties, KEY_URL);
         ConnectionPool.Provider provider = extractProvider(context, profileName, properties, KEY_POOL_CLASS);
         int maxConnections = extract(profileName, properties, KEY_POOL_SIZE, DEFAULT_POOL_SIZE);
         Map<String, String> connectionProps = extractMap(profileName, properties, KEY_PROPERTIES);
-        int fetchSize = extract(profileName, properties, KEY_FETCH_SIZE, DEFAULT_FETCH_SIZE);
-        int insertSize = extract(profileName, properties, KEY_BATCH_INSERT_SIZE, DEFAULT_BATCH_INSERT_SIZE);
-        int fetchThreads = extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS);
-        int insertThreads = extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS);
+
+        JdbcProfile.Builder builder = new JdbcProfile.Builder(profileName)
+                .withFetchSize(extract(profileName, properties, KEY_FETCH_SIZE, DEFAULT_FETCH_SIZE))
+                .withInsertSize(extract(profileName, properties, KEY_BATCH_INSERT_SIZE, DEFAULT_BATCH_INSERT_SIZE))
+                .withMaxInputConcurrency(extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS))
+                .withMaxOutputConcurrency(extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS))
+                .withOptions(extractSet(profileName, properties, KEY_OPTIMIZATIONS));
+        extract(JdbcOutputDriver.Granularity.class, profileName, properties, KEY_OUTPUT_GRANULARITY)
+            .ifPresent(builder::withOption);
         extract(OutputClearKind.class, profileName, properties, KEY_OUTPUT_CLEAR)
-            .map(OutputClearKind::toOption)
-            .ifPresent(options::add);
-        options.addAll(extractSet(profileName, properties, KEY_OPTIMIZATIONS));
-        ConnectionPool connections = closer.add(provider.newInstance(url, connectionProps, maxConnections));
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, fetch={}@{}, put={}@{}, opts={}", new Object[] {
-                    profileName,
-                    url, provider.getClass().getName(), maxConnections,
-                    fetchSize, fetchThreads,
-                    insertSize, insertThreads,
-                    options,
-            });
-        }
+            .ifPresent(builder::withOption);
         if (properties.isEmpty() == false) {
             throw new IllegalArgumentException(MessageFormat.format(
                     "unrecognized JDBC profile properties: {0}",
@@ -210,10 +207,14 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                         .map(k -> qualified(profileName, k))
                         .collect(Collectors.joining())));
         }
-        return new JdbcProfile(
-                profileName, connections,
-                fetchSize, insertSize, fetchThreads, insertThreads,
-                options);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, conf={}", new Object[] {
+                    profileName,
+                    url, provider.getClass().getName(), maxConnections,
+                    builder,
+            });
+        }
+        return builder.build(closer.add(provider.newInstance(url, connectionProps, maxConnections)));
     }
 
     private static ConnectionPool.Provider extractProvider(

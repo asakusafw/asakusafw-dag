@@ -22,7 +22,9 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.ServiceLoader;
 
 import org.junit.Test;
 
@@ -33,7 +35,6 @@ import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
 import com.asakusafw.dag.utils.common.Lang;
-import com.sun.tools.javac.util.ServiceLoader;
 
 /**
  * Test for {@link JdbcEnvironmentInstaller}.
@@ -69,6 +70,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(DEFAULT_INPUT_THREADS));
         assertThat(profile.getMaxOutputConcurrency().getAsInt(), is(DEFAULT_OUTPUT_THREADS));
         assertThat(profile.getAvailableOptions(), hasSize(0));
+        assertThat(profile.getOption(OutputClearKind.class), is(Optional.empty()));
     }
 
     /**
@@ -114,7 +116,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getBatchInsertSize().getAsInt(), is(2));
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(3));
         assertThat(profile.getMaxOutputConcurrency(), is(OptionalInt.empty()));
-        assertThat(profile.getAvailableOptions(), hasItem(OutputClearKind.KEEP.toOption()));
+        assertThat(profile.getOption(OutputClearKind.class), is(Optional.of(OutputClearKind.KEEP)));
     }
 
     /**

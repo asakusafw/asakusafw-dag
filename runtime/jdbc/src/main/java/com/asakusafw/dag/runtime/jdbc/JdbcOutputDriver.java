@@ -35,6 +35,14 @@ public interface JdbcOutputDriver {
     }
 
     /**
+     * Returns the output commit granularity.
+     * @return the output commit granularity
+     */
+    default Granularity getGranularity() {
+        return Granularity.COARSE;
+    }
+
+    /**
      * Initializes the target resource.
      * @throws IOException if I/O error was occurred while initializing the target resource
      * @throws InterruptedException if interrupted while initializing the target resource
@@ -50,4 +58,21 @@ public interface JdbcOutputDriver {
      * @throws InterruptedException if interrupted while initializing the writer
      */
     ObjectWriter open() throws IOException, InterruptedException;
+
+    /**
+     * Represents a kind of output granularity.
+     * @since 0.2.0
+     */
+    enum Granularity {
+
+        /**
+         * Fine grained.
+         */
+        FINE,
+
+        /**
+         * Coarse grained.
+         */
+        COARSE,
+    }
 }

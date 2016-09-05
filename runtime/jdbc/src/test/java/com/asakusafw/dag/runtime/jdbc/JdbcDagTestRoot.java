@@ -25,11 +25,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import org.junit.Rule;
 import org.junit.rules.ExternalResource;
@@ -94,11 +92,7 @@ public abstract class JdbcDagTestRoot {
 
     final Closer closer = new Closer();
 
-    private final Set<String> options = new LinkedHashSet<>();
-
-    private int maxInputConcurrency = -1;
-
-    private int maxOutputConcurrency = -1;
+    final List<Consumer<JdbcProfile.Builder>> editors = new ArrayList<>();
 
     /**
      * Adds a resource to be closed after this test case.
@@ -114,30 +108,20 @@ public abstract class JdbcDagTestRoot {
     }
 
     /**
+     * Adds a profile editor.
+     * @param editor the editor
+     */
+    public void edit(Consumer<JdbcProfile.Builder> editor) {
+        this.editors.add(editor);
+    }
+
+    /**
      * Creates a new pool.
      * @param connections the max number of connections
      * @return the created connection pool
      */
     public BasicConnectionPool pool(int connections) {
         return bless(new BasicConnectionPool(h2.getJdbcUrl(), Collections.emptyMap(), connections));
-    }
-
-    /**
-     * Adds options.
-     * @param values the options
-     */
-    public void options(String... values) {
-        Stream.of(values).forEach(this.options::add);
-    }
-
-    /**
-     * Sets concurrency.
-     * @param input input concurrency
-     * @param output output concurrency
-     */
-    public void concurrency(int input, int output) {
-        this.maxInputConcurrency = input;
-        this.maxOutputConcurrency = output;
     }
 
     /**
@@ -148,11 +132,7 @@ public abstract class JdbcDagTestRoot {
     public JdbcEnvironment environment(String... profileNames) {
         List<JdbcProfile> profiles = new ArrayList<>();
         for (String name : profileNames) {
-            profiles.add(new JdbcProfile(
-                    name, pool(1),
-                    -1, -1,
-                    maxInputConcurrency, maxOutputConcurrency,
-                    options));
+            profiles.add(profile0(name, pool(1)));
         }
         return new JdbcEnvironment(profiles);
     }
@@ -189,10 +169,16 @@ public abstract class JdbcDagTestRoot {
      */
     public void profile(String profileName, Action<? super JdbcProfile, ?> action) {
         try (ConnectionPool pool = new BasicConnectionPool(h2.getJdbcUrl(), Collections.emptyMap(), 1)) {
-            action.perform(new JdbcProfile(profileName, pool));
+            action.perform(profile0(profileName, pool));
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    private JdbcProfile profile0(String profileName, ConnectionPool pool) {
+        JdbcProfile.Builder builder = new JdbcProfile.Builder(profileName);
+        editors.forEach(e -> e.accept(builder));
+        return builder.build(pool);
     }
 
     /**

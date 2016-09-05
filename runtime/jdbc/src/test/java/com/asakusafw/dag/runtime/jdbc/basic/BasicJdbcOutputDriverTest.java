@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
+import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
@@ -73,6 +74,21 @@ public class BasicJdbcOutputDriverTest extends JdbcDagTestRoot {
             driver.initialize();
         });
         assertThat(select(), hasSize(0));
+    }
+
+    /**
+     * w/ options.
+     * @throws Exception if failed
+     */
+    @Test
+    public void options() throws Exception {
+        edit(b -> b.withMaxOutputConcurrency(123)
+                .withOption(JdbcOutputDriver.Granularity.class, JdbcOutputDriver.Granularity.FINE));
+        profile("testing", p -> {
+            BasicJdbcOutputDriver driver = driver(p);
+            assertThat(driver.getMaxConcurrency(), is(123));
+            assertThat(driver.getGranularity(), is(JdbcOutputDriver.Granularity.FINE));
+        });
     }
 
     private BasicJdbcOutputDriver driver(JdbcProfile profile) {

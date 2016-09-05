@@ -100,8 +100,16 @@ public class JdbcOutputProcessor implements VertexProcessor {
         driver.initialize();
 
         this.maxConcurrency = driver.getMaxConcurrency();
-        this.lazy = () -> new Task(spec.id, driver, counter);
-
+        switch (driver.getGranularity()) {
+        case FINE:
+            this.lazy = () -> new FineTask(spec.id, driver, counter);
+            break;
+        case COARSE:
+            this.lazy = () -> new CoarseTask(spec.id, driver, counter);
+            break;
+        default:
+            throw new AssertionError(driver.getGranularity());
+        }
         return Optional.empty();
     }
 
@@ -141,7 +149,52 @@ public class JdbcOutputProcessor implements VertexProcessor {
         }
     }
 
-    private static final class Task implements TaskProcessor {
+    private static final class FineTask implements TaskProcessor {
+
+        private final String id;
+
+        private final JdbcOutputDriver driver;
+
+        private final JdbcCounterGroup counter;
+
+        FineTask(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
+            Arguments.requireNonNull(id);
+            Arguments.requireNonNull(driver);
+            Arguments.requireNonNull(counter);
+            this.id = id;
+            this.driver = driver;
+            this.counter = counter;
+        }
+
+        @Override
+        public void run(TaskProcessorContext context) throws IOException, InterruptedException {
+            LOG.debug("starting JDBC output: {} ({})", id, driver);
+            try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME);
+                    ObjectWriter writer = driver.open()) {
+                long count = 0L;
+                while (reader.nextObject()) {
+                    count++;
+                    Object obj = reader.getObject();
+                    writer.putObject(obj);
+                }
+                counter.add(count);
+            } catch (Throwable t) {
+                LOG.error(MessageFormat.format(
+                        "error occurred while writing output: {0}",
+                        id), t);
+                throw t;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "JdbcOutput[Fine](id={0}, driver={1})", //$NON-NLS-1$
+                    id, driver);
+        }
+    }
+
+    private static final class CoarseTask implements TaskProcessor {
 
         private final String id;
 
@@ -153,7 +206,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
         private long count;
 
-        Task(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
+        CoarseTask(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
             Arguments.requireNonNull(id);
             Arguments.requireNonNull(driver);
             Arguments.requireNonNull(counter);

@@ -79,6 +79,12 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
     }
 
     @Override
+    public Granularity getGranularity() {
+        return profile.getOption(Granularity.class)
+                .orElse(JdbcOutputDriver.super.getGranularity());
+    }
+
+    @Override
     public void initialize() throws IOException, InterruptedException {
         if (initializer != null) {
             initializer.perform();

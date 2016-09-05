@@ -16,18 +16,24 @@
 package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Optionals;
 
 /**
  * Represents a JDBC target database profile.
  * @since 0.2.0
  */
-public class JdbcProfile {
+public final class JdbcProfile {
 
     private final String name;
 
@@ -43,40 +49,18 @@ public class JdbcProfile {
 
     private final Set<String> availableOptions;
 
-    /**
-     * Creates a new instance.
-     * @param name the profile name
-     * @param connectionPool the connection pool for the profile
-     */
-    public JdbcProfile(String name, ConnectionPool connectionPool) {
-        this(name, connectionPool, -1, -1, -1, -1, Collections.emptySet());
-    }
+    private final Map<Class<?>, Object> extraOptions;
 
-    /**
-     * Creates a new instance.
-     * @param name the profile name
-     * @param connectionPool the connection pool for the profile
-     * @param fetchSize the number of bulk fetch records, or {@code <= 0} if it is not defined
-     * @param insertSize the number of bulk insert records, or {@code <= 0} if it is not defined
-     * @param maxInputConcurrency the number of threads per input operation, or {@code <= 0} if it is not defined
-     * @param maxOutputConcurrency the number of threads per output operation, or {@code <= 0} if it is not defined
-     * @param availableOptions the available option names
-     */
-    public JdbcProfile(
-            String name, ConnectionPool connectionPool,
-            int fetchSize, int insertSize,
-            int maxInputConcurrency, int maxOutputConcurrency,
-            Collection<String> availableOptions) {
-        Arguments.requireNonNull(name);
-        Arguments.requireNonNull(connectionPool);
-        Arguments.requireNonNull(availableOptions);
-        this.name = name;
-        this.connectionPool = connectionPool;
-        this.fetchSize = fetchSize;
-        this.insertSize = insertSize;
-        this.maxInputConcurrency = maxInputConcurrency;
-        this.maxOutputConcurrency = maxOutputConcurrency;
-        this.availableOptions = Arguments.freezeToSet(availableOptions);
+    JdbcProfile(Builder builder, ConnectionPool pool) {
+        Arguments.requireNonNull(builder);
+        this.name = builder.name;
+        this.connectionPool = pool;
+        this.fetchSize = builder.fetchSize;
+        this.insertSize = builder.insertSize;
+        this.maxInputConcurrency = builder.maxInputConcurrency;
+        this.maxOutputConcurrency = builder.maxOutputConcurrency;
+        this.availableOptions = Arguments.freezeToSet(builder.availableOptions);
+        this.extraOptions = Arguments.freeze(builder.extraOptions);
     }
 
     /**
@@ -141,8 +125,164 @@ public class JdbcProfile {
         return availableOptions;
     }
 
+    /**
+     * Returns an extra option.
+     * @param <T> the option type
+     * @param type the option type
+     * @return the option, or empty if it is not defined
+     */
+    public <T> Optional<T> getOption(Class<T> type) {
+        Arguments.requireNonNull(type);
+        return Optionals.of(type.cast(extraOptions.get(type)));
+    }
+
     @Override
     public String toString() {
         return String.format("JdbcProfile(%s)", getName()); //$NON-NLS-1$
+    }
+
+    /**
+     * A builder of {@link JdbcProfile}.
+     * @since 0.2.0
+     */
+    public static class Builder {
+
+        final String name;
+
+        int fetchSize;
+
+        int insertSize;
+
+        int maxInputConcurrency;
+
+        int maxOutputConcurrency;
+
+        final Set<String> availableOptions = new LinkedHashSet<>();
+
+        final Map<Class<?>, Object> extraOptions = new LinkedHashMap<>();
+
+        /**
+         * Creates a new instance.
+         * @param name the profile name
+         */
+        public Builder(String name) {
+            Arguments.requireNonNull(name);
+            this.name = name;
+        }
+
+        /**
+         * Sets a fetchSize.
+         * @param newValue the fetchSize
+         * @return this
+         */
+        public Builder withFetchSize(int newValue) {
+            this.fetchSize = newValue;
+            return this;
+        }
+
+        /**
+         * Sets a insertSize.
+         * @param newValue the insertSize
+         * @return this
+         */
+        public Builder withInsertSize(int newValue) {
+            this.insertSize = newValue;
+            return this;
+        }
+
+        /**
+         * Sets a maxInputConcurrency.
+         * @param newValue the maxInputConcurrency
+         * @return this
+         */
+        public Builder withMaxInputConcurrency(int newValue) {
+            this.maxInputConcurrency = newValue;
+            return this;
+        }
+
+        /**
+         * Sets a maxOutputConcurrency.
+         * @param newValue the maxOutputConcurrency
+         * @return this
+         */
+        public Builder withMaxOutputConcurrency(int newValue) {
+            this.maxOutputConcurrency = newValue;
+            return this;
+        }
+
+        /**
+         * Adds an option.
+         * @param newValue the option
+         * @return this
+         */
+        public Builder withOption(String newValue) {
+            Arguments.requireNonNull(newValue);
+            this.availableOptions.add(newValue);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the options
+         * @return this
+         */
+        public Builder withOptions(Collection<String> values) {
+            Arguments.requireNonNull(values);
+            values.forEach(this::withOption);
+            return this;
+        }
+
+        /**
+         * Adds options.
+         * @param values the options
+         * @return this
+         */
+        public Builder withOptions(String... values) {
+            Arguments.requireNonNull(values);
+            return withOptions(Arrays.asList(values));
+        }
+
+        /**
+         * Adds an option.
+         * @param <T> the option type
+         * @param value the option value
+         * @return this
+         */
+        public <T extends Enum<T>> Builder withOption(T value) {
+            Arguments.requireNonNull(value);
+            return withOption(value.getDeclaringClass(), value);
+        }
+
+        /**
+         * Adds an option.
+         * @param <T> the option type
+         * @param type the option type
+         * @param value the option value
+         * @return this
+         */
+        public <T> Builder withOption(Class<T> type, T value) {
+            Arguments.requireNonNull(type);
+            Arguments.requireNonNull(value);
+            this.extraOptions.put(type, value);
+            return this;
+        }
+
+        /**
+         * Builds a new instance.
+         * @param connectionPool the connection pool
+         * @return the built instance
+         */
+        public JdbcProfile build(ConnectionPool connectionPool) {
+            return new JdbcProfile(this, connectionPool);
+        }
+
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "fetch={0}/{1}, insert={2}/{3}, options={4}, extra={5}", //$NON-NLS-1$
+                    fetchSize, maxInputConcurrency,
+                    insertSize, maxOutputConcurrency,
+                    availableOptions, extraOptions.values());
+        }
     }
 }

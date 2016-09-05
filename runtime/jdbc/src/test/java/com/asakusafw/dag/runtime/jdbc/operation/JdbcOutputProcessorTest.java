@@ -74,6 +74,26 @@ public class JdbcOutputProcessorTest extends JdbcDagTestRoot {
                 new KsvModel(3, null, "Hello3")));
     }
 
+    /**
+     * w/ fine grained.
+     * @throws Exception if failed
+     */
+    @Test
+    public void fine() throws Exception {
+        insert(999, null, "ERROR");
+        edit(b -> b.withOption(JdbcOutputDriver.Granularity.FINE));
+        profile("testing", profile -> {
+            run(c -> c.bind("t", driver(profile)),
+                    new KsvModel(1, null, "Hello1"),
+                    new KsvModel(2, null, "Hello2"),
+                    new KsvModel(3, null, "Hello3"));
+        });
+        assertThat(select(), contains(
+                new KsvModel(1, null, "Hello1"),
+                new KsvModel(2, null, "Hello2"),
+                new KsvModel(3, null, "Hello3")));
+    }
+
     private JdbcOutputDriver driver(JdbcProfile profile) {
         return new BasicJdbcOutputDriver(
                 profile,

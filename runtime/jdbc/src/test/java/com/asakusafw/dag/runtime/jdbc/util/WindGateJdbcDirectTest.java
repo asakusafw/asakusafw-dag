@@ -103,7 +103,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         for (int i = 0; i < 100; i++) {
             in.add(insert(i, null, null));
         }
-        concurrency(10, 1);
+        edit(b -> b.withMaxInputConcurrency(10));
         context("testing", c -> {
             JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .withOption(WindGateJdbcDirect.OPTIMIAZATION_CORE_SPLIT_PREFIX + "M_KEY")
@@ -130,7 +130,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         for (int i = 0; i < 100; i++) {
             in.add(insert(i, null, null));
         }
-        concurrency(1, 1);
+        edit(b -> b.withMaxInputConcurrency(1));
         context("testing", c -> {
             JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .withOption(WindGateJdbcDirect.OPTIMIAZATION_CORE_SPLIT_PREFIX + "M_KEY")
@@ -206,7 +206,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        options(OutputClearKind.KEEP.toOption());
+        edit(b -> b.withOption(OutputClearKind.KEEP));
         context("testing", c -> {
             JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .build(c);
@@ -224,7 +224,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        options(OutputClearKind.DELETE.toOption());
+        edit(b -> b.withOption(OutputClearKind.DELETE));
         context("testing", c -> {
             JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .build(c);
@@ -259,7 +259,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
      */
     @Test
     public void output_oracle_dirpath() throws Exception {
-        options(WindGateJdbcDirect.OPTIMIAZATION_ORACLE_DIRPATH);
+        edit(b -> b.withOption(WindGateJdbcDirect.OPTIMIAZATION_ORACLE_DIRPATH));
         context("testing", c -> {
             JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .withOptions(WindGateJdbcDirect.OPTIMIAZATION_ORACLE_DIRPATH)
@@ -295,7 +295,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        options(OutputClearKind.DELETE.toOption());
+        edit(b -> b.withOption(OutputClearKind.DELETE));
         context("testing", c -> {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .build(c);
@@ -313,7 +313,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        options(OutputClearKind.KEEP.toOption());
+        edit(b -> b.withOption(OutputClearKind.KEEP));
         context("testing", c -> {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .build(c);
