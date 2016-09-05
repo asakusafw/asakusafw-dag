@@ -30,6 +30,7 @@ import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
+import com.asakusafw.dag.runtime.jdbc.operation.OutputClearKind;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.utils.common.Lang;
@@ -197,6 +198,42 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
     }
 
     /**
+     * output - never truncate.
+     * @throws Exception if failed
+     */
+    @Test
+    public void output_keep() throws Exception {
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        options(OutputClearKind.KEEP.toOption());
+        context("testing", c -> {
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
+                    .build(c);
+            driver.initialize();
+        });
+        assertThat(select(), hasSize(3));
+    }
+
+    /**
+     * output - delete instead of truncate.
+     * @throws Exception if failed
+     */
+    @Test
+    public void output_delete() throws Exception {
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        options(OutputClearKind.DELETE.toOption());
+        context("testing", c -> {
+            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
+                    .build(c);
+            driver.initialize();
+        });
+        assertThat(select(), hasSize(0));
+    }
+
+    /**
      * output - custom truncate.
      * @throws Exception if failed
      */
@@ -247,6 +284,42 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
             driver.perform();
         });
         assertThat(select(), hasSize(0));
+    }
+
+    /**
+     * truncate - simple.
+     * @throws Exception if failed
+     */
+    @Test
+    public void truncate_delete() throws Exception {
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        options(OutputClearKind.DELETE.toOption());
+        context("testing", c -> {
+            JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
+                    .build(c);
+            driver.perform();
+        });
+        assertThat(select(), hasSize(0));
+    }
+
+    /**
+     * truncate - simple.
+     * @throws Exception if failed
+     */
+    @Test
+    public void truncate_keep() throws Exception {
+        insert(1, null, "Hello1");
+        insert(2, null, "Hello2");
+        insert(3, null, "Hello3");
+        options(OutputClearKind.KEEP.toOption());
+        context("testing", c -> {
+            JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
+                    .build(c);
+            driver.perform();
+        });
+        assertThat(select(), hasSize(3));
     }
 
     /**

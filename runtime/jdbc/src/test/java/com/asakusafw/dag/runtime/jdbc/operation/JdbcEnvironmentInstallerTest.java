@@ -68,6 +68,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getBatchInsertSize().getAsInt(), is(DEFAULT_BATCH_INSERT_SIZE));
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(DEFAULT_INPUT_THREADS));
         assertThat(profile.getMaxOutputConcurrency().getAsInt(), is(DEFAULT_OUTPUT_THREADS));
+        assertThat(profile.getAvailableOptions(), hasSize(0));
     }
 
     /**
@@ -101,6 +102,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
                 q("a", KEY_OUTPUT_THREADS), -1,
                 q("a", KEY_PROPERTIES + ".testing"), "OK",
                 q("a", KEY_POOL_CLASS), BasicConnectionPool.class.getName(),
+                q("a", KEY_OUTPUT_CLEAR), "keep",
         });
         JdbcProfile profile = environment.getProfile("a");
         try (ConnectionPool.Handle ha = profile.acquire();
@@ -112,6 +114,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getBatchInsertSize().getAsInt(), is(2));
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(3));
         assertThat(profile.getMaxOutputConcurrency(), is(OptionalInt.empty()));
+        assertThat(profile.getAvailableOptions(), hasItem(OutputClearKind.KEEP.toOption()));
     }
 
     /**

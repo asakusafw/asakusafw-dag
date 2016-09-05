@@ -23,8 +23,12 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,6 +107,11 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
     public static final String KEY_OUTPUT_THREADS = "output.threads";
 
     /**
+     * The property sub-key of the operation kind of clearing outputs.
+     */
+    public static final String KEY_OUTPUT_CLEAR = "output.clear";
+
+    /**
      * The property sub-key of comma separated available optimization symbols.
      */
     public static final String KEY_OPTIMIZATIONS = "optimizations";
@@ -171,6 +180,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                         name), e);
             }
         });
+        Set<String> options = new LinkedHashSet<>();
         String url = extract(profileName, properties, KEY_URL);
         ConnectionPool.Provider provider = extractProvider(context, profileName, properties, KEY_POOL_CLASS);
         int maxConnections = extract(profileName, properties, KEY_POOL_SIZE, DEFAULT_POOL_SIZE);
@@ -179,15 +189,18 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
         int insertSize = extract(profileName, properties, KEY_BATCH_INSERT_SIZE, DEFAULT_BATCH_INSERT_SIZE);
         int fetchThreads = extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS);
         int insertThreads = extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS);
-        Set<String> optimizations = extractSet(profileName, properties, KEY_OPTIMIZATIONS);
+        extract(OutputClearKind.class, profileName, properties, KEY_OUTPUT_CLEAR)
+            .map(OutputClearKind::toOption)
+            .ifPresent(options::add);
+        options.addAll(extractSet(profileName, properties, KEY_OPTIMIZATIONS));
         ConnectionPool connections = closer.add(provider.newInstance(url, connectionProps, maxConnections));
         if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, fetch={}@{}, put={}@{}, opt={}", new Object[] {
+            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, fetch={}@{}, put={}@{}, opts={}", new Object[] {
                     profileName,
                     url, provider.getClass().getName(), maxConnections,
                     fetchSize, fetchThreads,
                     insertSize, insertThreads,
-                    optimizations,
+                    options,
             });
         }
         if (properties.isEmpty() == false) {
@@ -200,7 +213,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
         return new JdbcProfile(
                 profileName, connections,
                 fetchSize, insertSize, fetchThreads, insertThreads,
-                optimizations);
+                options);
     }
 
     private static ConnectionPool.Provider extractProvider(
@@ -306,6 +319,27 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
             }
         }
         return results;
+    }
+
+    private static <E extends Enum<E>> Optional<E> extract(
+            Class<E> enumType,
+            String profile, Map<String, String> properties, String key) {
+        return Optionals.remove(properties, key)
+                .map(String::trim)
+                .filter(s -> s.isEmpty() == false)
+                .map(s -> {
+                    try {
+                        return Enum.valueOf(enumType, s.toUpperCase(Locale.ENGLISH));
+                    } catch (NoSuchElementException e) {
+                        throw new IllegalArgumentException(MessageFormat.format(
+                                "unknown name: {1} ({0}) must be one of {2}",
+                                qualified(profile, key),
+                                s.toUpperCase(Locale.ENGLISH),
+                                Stream.of(enumType.getEnumConstants())
+                                    .map(Enum::name)
+                                    .collect(Collectors.joining(", "))), e);
+                    }
+                });
     }
 
     static String qualified(String profile, String key) {

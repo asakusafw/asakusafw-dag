@@ -38,7 +38,9 @@ import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.basic.SplitJdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcContext;
+import com.asakusafw.dag.runtime.jdbc.operation.OutputClearKind;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.dag.utils.common.Optionals;
 
 /**
@@ -167,10 +169,8 @@ public final class WindGateJdbcDirect {
         Arguments.requireNonNull(options);
         return context -> {
             JdbcProfile profile = context.getEnvironment().getProfile(profileName);
-            JdbcOperationDriver truncate = new BasicJdbcOperationDriver(
-                    profile,
-                    resolve(context, customTruncate)
-                        .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options)));
+            JdbcOperationDriver truncate =
+                    truncate(context, profileName, tableName, columnNames, customTruncate, options);
             String insert = buildInsertStatement(profile, tableName, columnNames, options);
             return new BasicJdbcOutputDriver(profile, truncate, insert, adapters);
         };
@@ -197,13 +197,22 @@ public final class WindGateJdbcDirect {
         Arguments.requireNonNull(tableName);
         Arguments.requireNonNull(columnNames);
         Arguments.requireNonNull(options);
-        return context -> {
-            JdbcProfile profile = context.getEnvironment().getProfile(profileName);
-            return new BasicJdbcOperationDriver(
-                    profile,
-                    resolve(context, customTruncate)
-                        .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options)));
-        };
+        return context -> truncate(context, profileName, tableName, columnNames, customTruncate, options);
+    }
+
+    private static JdbcOperationDriver truncate(
+            JdbcContext context,
+            String profileName,
+            String tableName, List<String> columnNames, String customTruncate,
+            Set<String> options) {
+        JdbcProfile profile = context.getEnvironment().getProfile(profileName);
+        String statement = resolve(context, customTruncate)
+            .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options));
+        if (statement == null) {
+            return () -> Lang.pass();
+        } else {
+            return new BasicJdbcOperationDriver(profile, statement);
+        }
     }
 
     private static Optional<String> resolve(JdbcContext context, String pattern) {
@@ -241,7 +250,18 @@ public final class WindGateJdbcDirect {
             String tableName,
             List<String> columnNames,
             Set<String> options) {
-        return JdbcUtil.getTruncateStatement(tableName);
+        OutputClearKind kind = OutputClearKind.fromOptions(profile.getAvailableOptions())
+                .orElse(OutputClearKind.TRUNCATE);
+        switch (kind) {
+        case KEEP:
+            return null;
+        case DELETE:
+            return JdbcUtil.getDeleteStatement(tableName, null);
+        case TRUNCATE:
+            return JdbcUtil.getTruncateStatement(tableName);
+        default:
+            throw new AssertionError(kind);
+        }
     }
 
     private static String buildOracleDirPathInsertStatement(String tableName, List<String> columnNames) {
