@@ -42,4 +42,9 @@ public class VoidVertexProcessor implements VertexProcessor {
     public TaskProcessor createTaskProcessor() throws IOException, InterruptedException {
         return Lang::pass;
     }
+
+    @Override
+    public String toString() {
+        return "no-operations"; //$NON-NLS-1$
+    }
 }
