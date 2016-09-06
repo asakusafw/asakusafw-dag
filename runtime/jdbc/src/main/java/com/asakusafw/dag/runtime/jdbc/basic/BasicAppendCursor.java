@@ -101,11 +101,14 @@ class BasicAppendCursor implements ObjectWriter {
 
     @Override
     public void close() throws IOException, InterruptedException {
-        if (sawError == false) {
-            flush();
-        }
-        if (resource != null) {
-            resource.close();
+        try {
+            if (sawError == false) {
+                flush();
+            }
+        } finally {
+            if (resource != null) {
+                resource.close();
+            }
         }
     }
 }

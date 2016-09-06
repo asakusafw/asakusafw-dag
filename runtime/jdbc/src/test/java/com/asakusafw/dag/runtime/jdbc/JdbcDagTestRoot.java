@@ -41,6 +41,7 @@ import com.asakusafw.dag.runtime.jdbc.testing.H2Resource;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.utils.common.Action;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
+import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
 import com.asakusafw.runtime.util.VariableTable;
 
@@ -83,7 +84,13 @@ public abstract class JdbcDagTestRoot {
         @Override
         protected void after() {
             try {
-                closer.close();
+                try {
+                    for (BasicConnectionPool pool : pools) {
+                        Invariants.require(pool.size().getAsInt() == pool.rest());
+                    }
+                } finally {
+                    closer.close();
+                }
             } catch (IOException | InterruptedException e) {
                 throw new AssertionError(e);
             }
@@ -91,6 +98,8 @@ public abstract class JdbcDagTestRoot {
     };
 
     final Closer closer = new Closer();
+
+    final List<BasicConnectionPool> pools = new ArrayList<>();
 
     final List<Consumer<JdbcProfile.Builder>> editors = new ArrayList<>();
 
@@ -103,6 +112,9 @@ public abstract class JdbcDagTestRoot {
     public <T extends InterruptibleIo> T bless(T resource) {
         if (resource != null) {
             closer.add(resource);
+            if (resource instanceof BasicConnectionPool) {
+                pools.add((BasicConnectionPool) resource);
+            }
         }
         return resource;
     }

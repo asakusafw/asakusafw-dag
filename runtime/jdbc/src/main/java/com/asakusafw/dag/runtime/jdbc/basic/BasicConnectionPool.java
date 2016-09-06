@@ -98,10 +98,18 @@ public class BasicConnectionPool implements ConnectionPool {
         return OptionalInt.of(size);
     }
 
+    /**
+     * Returns the rest permissions (only for testing).
+     * @return the rest permissions
+     */
+    public int rest() {
+        return semaphore.availablePermits();
+    }
+
     @Override
     public ConnectionPool.Handle acquire() throws IOException, InterruptedException {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("acquiring connection from pool: {}/{}", semaphore.availablePermits(), size); //$NON-NLS-1$
+            LOG.debug("acquiring connection from pool: {}/{}", rest(), size); //$NON-NLS-1$
         }
         semaphore.acquire();
         boolean success = false;
@@ -164,6 +172,9 @@ public class BasicConnectionPool implements ConnectionPool {
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
         } finally {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("releasing connection into pool: {}/{}", rest(), size); //$NON-NLS-1$
+            }
             semaphore.release();
         }
     }
