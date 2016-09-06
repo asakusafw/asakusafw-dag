@@ -93,7 +93,7 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
 
     @Override
     public ObjectWriter open() throws IOException, InterruptedException {
-        LOG.debug("JDBC output ({}): {}", profile, sql);
+        LOG.debug("JDBC output ({}): {}", profile.getName(), sql); //$NON-NLS-1$
         int windowSize = profile.getBatchInsertSize().orElse(DEFAULT_INSERT_SIZE);
         try (Closer closer = new Closer()) {
             Connection connection = closer.add(profile.acquire()).getConnection();

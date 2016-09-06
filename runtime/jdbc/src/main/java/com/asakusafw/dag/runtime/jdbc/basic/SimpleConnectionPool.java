@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
@@ -148,7 +149,7 @@ public class SimpleConnectionPool implements ConnectionPool {
 
         private final Connection connection;
 
-        private boolean closed;
+        private final AtomicBoolean closed = new AtomicBoolean();
 
         Handle(Connection connection) {
             this.connection = connection;
@@ -161,12 +162,8 @@ public class SimpleConnectionPool implements ConnectionPool {
 
         @Override
         public void close() throws IOException, InterruptedException {
-            if (closed == false) {
-                try {
-                    SimpleConnectionPool.this.release(connection);
-                } finally {
-                    closed = true;
-                }
+            if (closed.compareAndSet(false, true)) {
+                SimpleConnectionPool.this.release(connection);
             }
         }
     }

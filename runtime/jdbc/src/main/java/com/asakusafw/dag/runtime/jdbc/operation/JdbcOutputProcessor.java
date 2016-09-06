@@ -47,7 +47,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
     /**
      * The input edge name.
      */
-    public static final String INPUT_NAME = "input";
+    public static final String INPUT_NAME = "input"; //$NON-NLS-1$
 
     private volatile int maxConcurrency = -1;
 
@@ -168,7 +168,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
         @Override
         public void run(TaskProcessorContext context) throws IOException, InterruptedException {
-            LOG.debug("starting JDBC output: {} ({})", id, driver);
+            LOG.debug("starting JDBC output: {} ({})", id, driver); //$NON-NLS-1$
             try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME);
                     ObjectWriter writer = driver.open()) {
                 long count = 0L;
@@ -218,7 +218,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
         @Override
         public void run(TaskProcessorContext context) throws IOException, InterruptedException {
             if (output == null) {
-                LOG.debug("starting JDBC output: {} ({})", id, driver);
+                LOG.debug("starting JDBC output: {} ({})", id, driver); //$NON-NLS-1$
                 output = driver.open();
             }
             try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME)) {

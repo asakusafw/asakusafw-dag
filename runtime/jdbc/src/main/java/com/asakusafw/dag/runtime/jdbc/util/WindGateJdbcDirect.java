@@ -130,7 +130,6 @@ public final class WindGateJdbcDirect {
             String splitColumn,
             Supplier<? extends ResultSetAdapter<?>> adapters,
             Set<String> options) {
-        // FIXME options
         int count = profile.getMaxInputConcurrency().orElse(1);
         String condition = cond.orElse(null);
         return new SplitJdbcInputDriver(
@@ -266,17 +265,17 @@ public final class WindGateJdbcDirect {
 
     private static String buildOracleDirPathInsertStatement(String tableName, List<String> columnNames) {
         StringBuilder buf = new StringBuilder();
-        buf.append("INSERT ");
-        buf.append("/*+APPEND_VALUES*/ ");
-        buf.append("INTO ");
+        buf.append("INSERT "); //$NON-NLS-1$
+        buf.append("/*+APPEND_VALUES*/ "); //$NON-NLS-1$
+        buf.append("INTO "); //$NON-NLS-1$
         buf.append(tableName);
-        buf.append(" (");
+        buf.append(" ("); //$NON-NLS-1$
         buf.append(String.join(",", columnNames)); //$NON-NLS-1$
-        buf.append(") ");
-        buf.append("VALUES ");
-        buf.append("(");
+        buf.append(") "); //$NON-NLS-1$
+        buf.append("VALUES "); //$NON-NLS-1$
+        buf.append("("); //$NON-NLS-1$
         buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
-        buf.append(")");
+        buf.append(")"); //$NON-NLS-1$
         return buf.toString();
     }
 

@@ -88,7 +88,7 @@ public class BasicJdbcInputDriver implements JdbcInputDriver {
         Arguments.requireNonNull(profile);
         Arguments.requireNonNull(sql);
         Arguments.requireNonNull(adapter);
-        LOG.debug("JDBC input ({}): {}", profile, sql);
+        LOG.debug("JDBC input ({}): {}", profile.getName(), sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
             Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();

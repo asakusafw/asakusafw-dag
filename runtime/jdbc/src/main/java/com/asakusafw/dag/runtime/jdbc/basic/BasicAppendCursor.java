@@ -86,8 +86,8 @@ class BasicAppendCursor implements ObjectWriter {
         if (windowSize == restWindowSize) {
             return;
         }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("commit {} records", windowSize - restWindowSize);
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("commit {} records", windowSize - restWindowSize); //$NON-NLS-1$
         }
         restWindowSize = windowSize;
         try {

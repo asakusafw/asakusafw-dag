@@ -50,7 +50,7 @@ public final class JdbcUtil {
     public static IOException wrap(SQLException exception) {
         int depth = 0;
         for (SQLException e = exception; e != null; e = e.getNextException()) {
-            LOG.error("[{}]", depth++, e);
+            LOG.error("[{}]", depth++, e); //$NON-NLS-1$
         }
         return new IOException(exception);
     }
@@ -78,9 +78,9 @@ public final class JdbcUtil {
      */
     public static String getSelectStatement(String tableName, List<String> columnNames) {
         StringBuilder buf = new StringBuilder();
-        buf.append("SELECT ");
+        buf.append("SELECT "); //$NON-NLS-1$
         buf.append(String.join(",", columnNames)); //$NON-NLS-1$
-        buf.append(" FROM ");
+        buf.append(" FROM "); //$NON-NLS-1$
         buf.append(tableName);
         return buf.toString();
     }
@@ -97,7 +97,7 @@ public final class JdbcUtil {
         if (condition == null) {
             return body;
         } else {
-            return new StringBuilder().append(body).append(" WHERE ").append(condition).toString();
+            return new StringBuilder().append(body).append(" WHERE ").append(condition).toString(); //$NON-NLS-1$
         }
     }
 
@@ -109,16 +109,16 @@ public final class JdbcUtil {
      */
     public static String getInsertStatement(String tableName, List<String> columnNames) {
         StringBuilder buf = new StringBuilder();
-        buf.append("INSERT ");
-        buf.append("INTO ");
+        buf.append("INSERT "); //$NON-NLS-1$
+        buf.append("INTO "); //$NON-NLS-1$
         buf.append(tableName);
-        buf.append(" (");
+        buf.append(" ("); //$NON-NLS-1$
         buf.append(String.join(",", columnNames)); //$NON-NLS-1$
-        buf.append(") ");
-        buf.append("VALUES ");
-        buf.append("(");
+        buf.append(") "); //$NON-NLS-1$
+        buf.append("VALUES "); //$NON-NLS-1$
+        buf.append("("); //$NON-NLS-1$
         buf.append(String.join(",", placeholders(columnNames.size()))); //$NON-NLS-1$
-        buf.append(")");
+        buf.append(")"); //$NON-NLS-1$
         return buf.toString();
     }
 
@@ -130,11 +130,11 @@ public final class JdbcUtil {
      */
     public static String getDeleteStatement(String tableName, String condition) {
         StringBuilder buf = new StringBuilder();
-        buf.append("DELETE ");
-        buf.append("FROM ");
+        buf.append("DELETE "); //$NON-NLS-1$
+        buf.append("FROM "); //$NON-NLS-1$
         buf.append(tableName);
         if (condition != null) {
-            buf.append(" WHERE ").append(condition);
+            buf.append(" WHERE ").append(condition); //$NON-NLS-1$
         }
         return buf.toString();
     }
@@ -146,8 +146,8 @@ public final class JdbcUtil {
      */
     public static String getTruncateStatement(String tableName) {
         StringBuilder buf = new StringBuilder();
-        buf.append("TRUNCATE ");
-        buf.append("TABLE ");
+        buf.append("TRUNCATE "); //$NON-NLS-1$
+        buf.append("TABLE "); //$NON-NLS-1$
         buf.append(tableName);
         return buf.toString();
     }

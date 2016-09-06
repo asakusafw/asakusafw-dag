@@ -135,7 +135,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
     private Optional<Stats> getStats() throws IOException, InterruptedException {
         String sql = getStatsSql();
-        LOG.debug("split stats: {}", sql);
+        LOG.debug("split stats: {}", sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
             Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();
@@ -162,7 +162,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
                 max = getValue(rs, type, 2);
             }
             if (LOG.isDebugEnabled()) {
-                LOG.debug("split stats: table={}, column={}:{}, range=[{}, {}]", new Object[] {
+                LOG.debug("split stats: table={}, column={}:{}, range=[{}, {}]", new Object[] { //$NON-NLS-1$
                         tableName,
                         splitColumnName, meta.getColumnTypeName(1),
                         min, max,
@@ -186,12 +186,12 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
     private String getStatsSql() {
         StringBuilder buf = new StringBuilder();
-        buf.append("SELECT ");
-        buf.append(String.format("MIN(%1$s), MAX(%1$s)", splitColumnName));
-        buf.append(" FROM ");
+        buf.append("SELECT "); //$NON-NLS-1$
+        buf.append(String.format("MIN(%1$s), MAX(%1$s)", splitColumnName)); //$NON-NLS-1$
+        buf.append(" FROM "); //$NON-NLS-1$
         buf.append(tableName);
         if (condition != null) {
-            buf.append(" WHERE ");
+            buf.append(" WHERE "); //$NON-NLS-1$
             buf.append(condition);
         }
         return buf.toString();
@@ -302,7 +302,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
     private List<? extends JdbcInputDriver.Partition> buildPartitions(Stats stats, List<?> boundValues) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("split {} into {} partitions by {}: {}", new Object[] {
+            LOG.debug("split {} into {} partitions by {}: {}", new Object[] { //$NON-NLS-1$
                     tableName,
                     boundValues.size() + 1,
                     splitColumnName,
@@ -323,15 +323,15 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
     private Partition toLowerPartition(Stats stats, Object value) {
         StringBuilder buf = getQueryPrefix();
         if (stats.nullable) {
-            buf.append("(");
+            buf.append("("); //$NON-NLS-1$
             buf.append(splitColumnName);
-            buf.append(" IS NULL ");
-            buf.append("OR ");
+            buf.append(" IS NULL "); //$NON-NLS-1$
+            buf.append("OR "); //$NON-NLS-1$
         }
         buf.append(splitColumnName);
-        buf.append(" < ?");
+        buf.append(" < ?"); //$NON-NLS-1$
         if (stats.nullable) {
-            buf.append(")");
+            buf.append(")"); //$NON-NLS-1$
         }
         return new Partition(profile, buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
     }
@@ -340,14 +340,14 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         StringBuilder buf = getQueryPrefix();
         if (stats.nullable) {
             buf.append(splitColumnName);
-            buf.append(" IS NOT NULL ");
-            buf.append("AND ");
+            buf.append(" IS NOT NULL "); //$NON-NLS-1$
+            buf.append("AND "); //$NON-NLS-1$
         }
-        buf.append("? <= ");
+        buf.append("? <= "); //$NON-NLS-1$
         buf.append(splitColumnName);
-        buf.append(" AND ");
+        buf.append(" AND "); //$NON-NLS-1$
         buf.append(splitColumnName);
-        buf.append(" < ?");
+        buf.append(" < ?"); //$NON-NLS-1$
         return new Partition(profile, buf.toString(), Arrays.asList(lower, upper), stats.typeId, adapters.get());
     }
 
@@ -355,10 +355,10 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         StringBuilder buf = getQueryPrefix();
         if (stats.nullable) {
             buf.append(splitColumnName);
-            buf.append(" IS NOT NULL ");
-            buf.append("AND ");
+            buf.append(" IS NOT NULL "); //$NON-NLS-1$
+            buf.append("AND "); //$NON-NLS-1$
         }
-        buf.append("? <= ");
+        buf.append("? <= "); //$NON-NLS-1$
         buf.append(splitColumnName);
         return new Partition(profile, buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
     }
@@ -367,9 +367,9 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         StringBuilder buf = new StringBuilder();
         buf.append(JdbcUtil.getSelectStatement(tableName, columnNames));
         if (condition == null) {
-            buf.append(" WHERE ");
+            buf.append(" WHERE "); //$NON-NLS-1$
         } else {
-            buf.append(" WHERE ").append(condition).append(" AND ");
+            buf.append(" WHERE ").append(condition).append(" AND "); //$NON-NLS-1$ //$NON-NLS-2$
         }
         return buf;
     }
@@ -417,7 +417,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
         @Override
         public ObjectReader open() throws IOException, InterruptedException {
-            LOG.debug("split SELECT: {} :: {}", sql, arguments);
+            LOG.debug("split SELECT: {} :: {}", sql, arguments); //$NON-NLS-1$
             try (Closer closer = new Closer()) {
                 Connection connection = closer.add(profile.acquire()).getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql);

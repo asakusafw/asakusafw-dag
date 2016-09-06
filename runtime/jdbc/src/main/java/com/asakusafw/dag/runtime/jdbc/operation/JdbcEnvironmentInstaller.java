@@ -59,67 +59,67 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
      * The property key prefix.
      * Each property key must be in form of {@code [prefix].[profile-name].[sub-key]}.
      */
-    public static final String KEY_PREFIX = "com.asakusafw.dag.jdbc.";
+    public static final String KEY_PREFIX = "com.asakusafw.dag.jdbc."; //$NON-NLS-1$
 
     /**
      * The property sub-key of connection URL.
      */
-    public static final String KEY_URL = "url";
+    public static final String KEY_URL = "url"; //$NON-NLS-1$
 
     /**
      * The property sub-key of fqn of JDBC Driver.
      */
-    public static final String KEY_DRIVER = "driver";
+    public static final String KEY_DRIVER = "driver"; //$NON-NLS-1$
 
     /**
      * The property sub-key of JDBC connection properties.
      */
-    public static final String KEY_PROPERTIES = "properties";
+    public static final String KEY_PROPERTIES = "properties"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the connection pool implementation class name.
      */
-    public static final String KEY_POOL_CLASS = "connection.pool";
+    public static final String KEY_POOL_CLASS = "connection.pool"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the max number of connections.
      */
-    public static final String KEY_POOL_SIZE = "connection.max";
+    public static final String KEY_POOL_SIZE = "connection.max"; //$NON-NLS-1$
 
     /**
      * The property sub-key of {@link ResultSet#getFetchSize() fetch size}.
      */
-    public static final String KEY_FETCH_SIZE = "input.records";
+    public static final String KEY_FETCH_SIZE = "input.records"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the number of threads per input.
      */
-    public static final String KEY_INPUT_THREADS = "input.threads";
+    public static final String KEY_INPUT_THREADS = "input.threads"; //$NON-NLS-1$
 
     /**
      * The property sub-key of {@link PreparedStatement#executeBatch() the number of batch insert records} per commit.
      */
-    public static final String KEY_BATCH_INSERT_SIZE = "output.records";
+    public static final String KEY_BATCH_INSERT_SIZE = "output.records"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the number of threads per output.
      */
-    public static final String KEY_OUTPUT_THREADS = "output.threads";
+    public static final String KEY_OUTPUT_THREADS = "output.threads"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the operation kind of clearing outputs.
      */
-    public static final String KEY_OUTPUT_CLEAR = "output.clear";
+    public static final String KEY_OUTPUT_CLEAR = "output.clear"; //$NON-NLS-1$
 
     /**
      * The property sub-key of the output committing granularity.
      */
-    public static final String KEY_OUTPUT_GRANULARITY = "output.granularity";
+    public static final String KEY_OUTPUT_GRANULARITY = "output.granularity"; //$NON-NLS-1$
 
     /**
      * The property sub-key of comma separated available optimization symbols.
      */
-    public static final String KEY_OPTIMIZATIONS = "optimizations";
+    public static final String KEY_OPTIMIZATIONS = "optimizations"; //$NON-NLS-1$
 
     /**
      * The default value of {@link #KEY_POOL_SIZE}.
@@ -164,7 +164,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
         List<JdbcProfile> results = new ArrayList<>();
         for (Map.Entry<String, Map<String, String>> entry : properties.entrySet()) {
             String profileName = entry.getKey();
-            LOG.debug("loading JDBC profile: {}", profileName);
+            LOG.debug("loading JDBC profile: {}", profileName); //$NON-NLS-1$
             Map<String, String> subProperties = entry.getValue();
             results.add(resolve(context, profileName, subProperties, closer));
         }
@@ -205,10 +205,10 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                     "unrecognized JDBC profile properties: {0}",
                     properties.keySet().stream()
                         .map(k -> qualified(profileName, k))
-                        .collect(Collectors.joining())));
+                        .collect(Collectors.joining(", ", "{", "}")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         }
         if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, conf={}", new Object[] {
+            LOG.debug("JDBC profile: name={}, jdbc={}@{}/{}, conf={{}}", new Object[] { //$NON-NLS-1$
                     profileName,
                     url, provider.getClass().getName(), maxConnections,
                     builder,
@@ -292,7 +292,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
 
     private static Set<String> extractSet(String profile, Map<String, String> properties, String key) {
         return Optionals.remove(properties, key)
-                .map(s -> Stream.of(s.split(","))
+                .map(s -> Stream.of(s.split(",")) //$NON-NLS-1$
                         .map(String::trim)
                         .filter(e -> e.isEmpty() == false)
                         .collect(Collectors.toSet()))
@@ -338,7 +338,7 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                                 s.toUpperCase(Locale.ENGLISH),
                                 Stream.of(enumType.getEnumConstants())
                                     .map(Enum::name)
-                                    .collect(Collectors.joining(", "))), e);
+                                    .collect(Collectors.joining(", "))), e); //$NON-NLS-1$
                     }
                 });
     }

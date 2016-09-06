@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.Optionals;
 
 /**
@@ -100,7 +101,7 @@ public class BasicConnectionPool implements ConnectionPool {
     @Override
     public ConnectionPool.Handle acquire() throws IOException, InterruptedException {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("acquiring connection: {}/{}", semaphore.availablePermits(), size);
+            LOG.debug("acquiring connection from pool: {}/{}", semaphore.availablePermits(), size); //$NON-NLS-1$
         }
         semaphore.acquire();
         boolean success = false;
@@ -137,7 +138,7 @@ public class BasicConnectionPool implements ConnectionPool {
     }
 
     private Connection acquire0() throws SQLException {
-        LOG.debug("get connection: {}", url);
+        LOG.debug("opening connection: {}", url); //$NON-NLS-1$
         if (driver != null) {
             return driver.connect(url, properties);
         } else {
@@ -195,6 +196,7 @@ public class BasicConnectionPool implements ConnectionPool {
         private final AtomicReference<Connection> connection;
 
         Handle(Connection connection) {
+            Invariants.requireNonNull(connection);
             this.connection = new AtomicReference<>(connection);
         }
 

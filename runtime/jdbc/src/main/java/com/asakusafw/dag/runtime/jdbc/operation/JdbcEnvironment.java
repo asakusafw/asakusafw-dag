@@ -41,8 +41,6 @@ public class JdbcEnvironment {
 
     private final Map<String, JdbcProfile> profiles;
 
-    // TODO pluggable implementations?
-
     /**
      * Creates a new instance.
      * @param profiles the JDBC profiles in this environment

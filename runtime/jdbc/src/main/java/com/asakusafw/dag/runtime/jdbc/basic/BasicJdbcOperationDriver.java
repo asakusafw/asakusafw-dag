@@ -55,13 +55,13 @@ public class BasicJdbcOperationDriver implements JdbcOperationDriver {
 
     @Override
     public void perform() throws IOException, InterruptedException {
-        LOG.debug("JDBC operation: {}", sql);
+        LOG.debug("JDBC operation: {}", sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
             Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();
             closer.add(JdbcUtil.wrap(statement::close));
             statement.execute(sql);
-            LOG.debug("commit: {}", sql);
+            LOG.debug("commit: {}", sql); //$NON-NLS-1$
             connection.commit();
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
