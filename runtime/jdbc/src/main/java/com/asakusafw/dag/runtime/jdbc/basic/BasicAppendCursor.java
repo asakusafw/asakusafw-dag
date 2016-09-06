@@ -30,7 +30,7 @@ import com.asakusafw.dag.utils.common.InterruptibleIo;
 
 class BasicAppendCursor implements ObjectWriter {
 
-    static final Logger LOG = LoggerFactory.getLogger(BasicJdbcOutputDriver.class);
+    static final Logger LOG = LoggerFactory.getLogger(BasicAppendCursor.class);
 
     private final PreparedStatement statement;
 
@@ -85,6 +85,9 @@ class BasicAppendCursor implements ObjectWriter {
     private void flush() throws IOException {
         if (windowSize == restWindowSize) {
             return;
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("commit {} records", windowSize - restWindowSize);
         }
         restWindowSize = windowSize;
         try {

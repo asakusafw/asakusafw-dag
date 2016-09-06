@@ -28,6 +28,9 @@ import java.util.Queue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -38,6 +41,8 @@ import com.asakusafw.dag.utils.common.Optionals;
  * @since 0.2.0
  */
 public class BasicConnectionPool implements ConnectionPool {
+
+    static final Logger LOG = LoggerFactory.getLogger(BasicConnectionPool.class);
 
     private final Driver driver;
 
@@ -94,6 +99,9 @@ public class BasicConnectionPool implements ConnectionPool {
 
     @Override
     public ConnectionPool.Handle acquire() throws IOException, InterruptedException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("acquiring connection: {}/{}", semaphore.availablePermits(), size);
+        }
         semaphore.acquire();
         boolean success = false;
         try {
@@ -129,6 +137,7 @@ public class BasicConnectionPool implements ConnectionPool {
     }
 
     private Connection acquire0() throws SQLException {
+        LOG.debug("get connection: {}", url);
         if (driver != null) {
             return driver.connect(url, properties);
         } else {
