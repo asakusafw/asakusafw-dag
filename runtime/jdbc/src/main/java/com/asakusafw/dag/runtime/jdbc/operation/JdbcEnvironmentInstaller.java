@@ -41,7 +41,6 @@ import com.asakusafw.dag.api.processor.ProcessorContext;
 import com.asakusafw.dag.api.processor.ProcessorContext.Editor;
 import com.asakusafw.dag.api.processor.extension.ProcessorContextExtension;
 import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
-import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
@@ -110,11 +109,6 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
      * The property sub-key of the operation kind of clearing outputs.
      */
     public static final String KEY_OUTPUT_CLEAR = "output.clear"; //$NON-NLS-1$
-
-    /**
-     * The property sub-key of the output committing granularity.
-     */
-    public static final String KEY_OUTPUT_GRANULARITY = "output.granularity"; //$NON-NLS-1$
 
     /**
      * The property sub-key of comma separated available optimization symbols.
@@ -196,8 +190,6 @@ public class JdbcEnvironmentInstaller implements ProcessorContextExtension {
                 .withMaxInputConcurrency(extract(profileName, properties, KEY_INPUT_THREADS, DEFAULT_INPUT_THREADS))
                 .withMaxOutputConcurrency(extract(profileName, properties, KEY_OUTPUT_THREADS, DEFAULT_OUTPUT_THREADS))
                 .withOptions(extractSet(profileName, properties, KEY_OPTIMIZATIONS));
-        extract(JdbcOutputDriver.Granularity.class, profileName, properties, KEY_OUTPUT_GRANULARITY)
-            .ifPresent(builder::withOption);
         extract(OutputClearKind.class, profileName, properties, KEY_OUTPUT_CLEAR)
             .ifPresent(builder::withOption);
         if (properties.isEmpty() == false) {
