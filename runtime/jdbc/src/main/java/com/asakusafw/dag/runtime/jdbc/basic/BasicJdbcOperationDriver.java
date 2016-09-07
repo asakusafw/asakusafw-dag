@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
-import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
@@ -37,27 +36,21 @@ public class BasicJdbcOperationDriver implements JdbcOperationDriver {
 
     static final Logger LOG = LoggerFactory.getLogger(BasicJdbcOperationDriver.class);
 
-    private final JdbcProfile profile;
-
     private final String sql;
 
     /**
      * Creates a new instance.
-     * @param profile the target JDBC profile
      * @param sql the delete statement
      */
-    public BasicJdbcOperationDriver(JdbcProfile profile, String sql) {
-        Arguments.requireNonNull(profile);
+    public BasicJdbcOperationDriver(String sql) {
         Arguments.requireNonNull(sql);
-        this.profile = profile;
         this.sql = sql;
     }
 
     @Override
-    public void perform() throws IOException, InterruptedException {
+    public void perform(Connection connection) throws IOException, InterruptedException {
         LOG.debug("JDBC operation: {}", sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
-            Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();
             closer.add(JdbcUtil.wrap(statement::close));
             statement.execute(sql);

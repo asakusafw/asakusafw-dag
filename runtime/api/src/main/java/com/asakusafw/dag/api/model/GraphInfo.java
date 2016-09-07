@@ -36,9 +36,9 @@ public class GraphInfo implements Serializable {
 
     private static final int MAGIC = 0xa343ada0;
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = VERSION;
 
     private final List<VertexInfo> vertices = new ArrayList<>();
 

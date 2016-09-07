@@ -24,10 +24,7 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.asakusafw.dag.api.processor.ObjectWriter;
-import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
-import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.PreparedStatementAdapter;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -41,61 +38,82 @@ public class BasicJdbcOutputDriver implements JdbcOutputDriver {
 
     static final Logger LOG = LoggerFactory.getLogger(BasicJdbcOutputDriver.class);
 
-    private static final int DEFAULT_INSERT_SIZE = 1024;
-
-    private final JdbcProfile profile;
-
-    private final JdbcOperationDriver initializer;
-
     private final String sql;
 
     private final Supplier<? extends PreparedStatementAdapter<?>> adapters;
 
     /**
      * Creates a new instance.
-     * @param profile the target JDBC profile
-     * @param initializer the output initializer (nullable)
      * @param sql the insert statement with place-holders
      * @param adapters the prepared statement adapter provider
      */
-    public BasicJdbcOutputDriver(
-            JdbcProfile profile,
-            JdbcOperationDriver initializer,
-            String sql,
-            Supplier<? extends PreparedStatementAdapter<?>> adapters) {
-        Arguments.requireNonNull(profile);
+    public BasicJdbcOutputDriver(String sql, Supplier<? extends PreparedStatementAdapter<?>> adapters) {
         Arguments.requireNonNull(sql);
         Arguments.requireNonNull(adapters);
-        this.profile = profile;
-        this.initializer = initializer;
         this.sql = sql;
         this.adapters = adapters;
     }
 
     @Override
-    public int getMaxConcurrency() {
-        return profile.getMaxOutputConcurrency()
-                .orElse(JdbcOutputDriver.super.getMaxConcurrency());
-    }
-
-    @Override
-    public void initialize() throws IOException, InterruptedException {
-        if (initializer != null) {
-            initializer.perform();
+    public JdbcOutputDriver.Sink open(Connection connection) throws IOException, InterruptedException {
+        LOG.debug("JDBC output: {}", sql); //$NON-NLS-1$
+        try (Closer closer = new Closer()) {
+            PreparedStatement statement = connection.prepareStatement(sql);
+            closer.add(JdbcUtil.wrap(statement::close));
+            return new Sink(statement, adapters.get(), closer.move());
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
         }
     }
 
-    @Override
-    public ObjectWriter open() throws IOException, InterruptedException {
-        LOG.debug("JDBC output ({}): {}", profile.getName(), sql); //$NON-NLS-1$
-        int windowSize = profile.getBatchInsertSize().orElse(DEFAULT_INSERT_SIZE);
-        try (Closer closer = new Closer()) {
-            Connection connection = closer.add(profile.acquire()).getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql);
-            closer.add(JdbcUtil.wrap(statement::close));
-            return new BasicAppendCursor(statement, adapters.get(), windowSize, closer.move());
-        } catch (SQLException e) {
-            throw JdbcUtil.wrap(e);
+    private static class Sink implements JdbcOutputDriver.Sink {
+
+        private final PreparedStatement statement;
+
+        private final PreparedStatementAdapter<Object> adapter;
+
+        private final Closer resource;
+
+        private boolean dirty;
+
+        @SuppressWarnings("unchecked")
+        Sink(PreparedStatement statement, PreparedStatementAdapter<?> adapter, Closer resource) {
+            Arguments.requireNonNull(statement);
+            Arguments.requireNonNull(adapter);
+            Arguments.requireNonNull(resource);
+            this.adapter = (PreparedStatementAdapter<Object>) adapter;
+            this.statement = statement;
+            this.resource = resource;
+        }
+
+        @Override
+        public void putObject(Object object) throws IOException, InterruptedException {
+            try {
+                adapter.drive(statement, object);
+                statement.addBatch();
+                dirty = true;
+            } catch (SQLException e) {
+                throw JdbcUtil.wrap(e);
+            }
+        }
+
+        @Override
+        public boolean flush() throws IOException, InterruptedException {
+            if (dirty) {
+                dirty = false;
+                try {
+                    statement.executeBatch();
+                } catch (SQLException e) {
+                    throw JdbcUtil.wrap(e);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public void close() throws IOException, InterruptedException {
+            resource.close();
         }
     }
 }

@@ -181,79 +181,6 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
     }
 
     /**
-     * output - truncate all.
-     * @throws Exception if failed
-     */
-    @Test
-    public void output_truncate() throws Exception {
-        insert(1, null, "Hello1");
-        insert(2, null, "Hello2");
-        insert(3, null, "Hello3");
-        context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
-                    .build(c);
-            driver.initialize();
-        });
-        assertThat(select(), hasSize(0));
-    }
-
-    /**
-     * output - never truncate.
-     * @throws Exception if failed
-     */
-    @Test
-    public void output_keep() throws Exception {
-        insert(1, null, "Hello1");
-        insert(2, null, "Hello2");
-        insert(3, null, "Hello3");
-        edit(b -> b.withOption(OutputClearKind.KEEP));
-        context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
-                    .build(c);
-            driver.initialize();
-        });
-        assertThat(select(), hasSize(3));
-    }
-
-    /**
-     * output - delete instead of truncate.
-     * @throws Exception if failed
-     */
-    @Test
-    public void output_delete() throws Exception {
-        insert(1, null, "Hello1");
-        insert(2, null, "Hello2");
-        insert(3, null, "Hello3");
-        edit(b -> b.withOption(OutputClearKind.DELETE));
-        context("testing", c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
-                    .build(c);
-            driver.initialize();
-        });
-        assertThat(select(), hasSize(0));
-    }
-
-    /**
-     * output - custom truncate.
-     * @throws Exception if failed
-     */
-    @Test
-    public void output_truncate_custom() throws Exception {
-        insert(1, null, "Hello1");
-        insert(2, null, "Hello2");
-        insert(3, null, "Hello3");
-        context("testing", Collections.singletonMap("V", "2"), c -> {
-            JdbcOutputDriver driver = WindGateJdbcDirect.output("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
-                    .withCustomTruncate(JdbcUtil.getDeleteStatement(TABLE, "M_KEY = ${V}"))
-                    .build(c);
-            driver.initialize();
-        });
-        assertThat(select(), contains(
-                new KsvModel(1, null, "Hello1"),
-                new KsvModel(3, null, "Hello3")));
-    }
-
-    /**
      * output - w/ oracle dirpath.
      * @throws Exception if failed
      */
@@ -281,7 +208,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         context("testing", c -> {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .build(c);
-            driver.perform();
+            perform(driver);
         });
         assertThat(select(), hasSize(0));
     }
@@ -299,7 +226,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         context("testing", c -> {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .build(c);
-            driver.perform();
+            perform(driver);
         });
         assertThat(select(), hasSize(0));
     }
@@ -317,7 +244,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
         context("testing", c -> {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .build(c);
-            driver.perform();
+            perform(driver);
         });
         assertThat(select(), hasSize(3));
     }
@@ -335,7 +262,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
             JdbcOperationDriver driver = WindGateJdbcDirect.truncate("testing", TABLE, COLUMNS)
                     .withCustomTruncate(JdbcUtil.getDeleteStatement(TABLE, "M_KEY = ${V}"))
                     .build(c);
-            driver.perform();
+            perform(driver);
         });
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),

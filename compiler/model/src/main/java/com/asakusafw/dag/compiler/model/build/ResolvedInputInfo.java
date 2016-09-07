@@ -21,10 +21,14 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription;
 
 /**
  * Represents a resolved input.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class ResolvedInputInfo {
 
     private final String id;
+
+    private final String tag;
 
     private final EdgeDescriptor descriptor;
 
@@ -40,7 +44,7 @@ public class ResolvedInputInfo {
      * @param descriptor the descriptor
      */
     public ResolvedInputInfo(String id, EdgeDescriptor descriptor) {
-        this(id, descriptor, null, null, null);
+        this(id, null, descriptor, null, null, null);
     }
 
     /**
@@ -56,9 +60,39 @@ public class ResolvedInputInfo {
             ClassDescription mapperType,
             ClassDescription copierType,
             ClassDescription combinerType) {
+        this(id, null, descriptor, mapperType, copierType, combinerType);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param id the input ID
+     * @param tag the optional port tag (nullable)
+     * @param descriptor the descriptor
+     * @since 0.2.0
+     */
+    public ResolvedInputInfo(String id, String tag, EdgeDescriptor descriptor) {
+        this(id, descriptor, null, null, null);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param id the input ID
+     * @param tag the optional port tag
+     * @param descriptor the descriptor
+     * @param mapperType the mapper type (nullable)
+     * @param copierType the copier type (nullable)
+     * @param combinerType the combiner type (nullable)
+     * @since 0.2.0
+     */
+    public ResolvedInputInfo(
+            String id, String tag, EdgeDescriptor descriptor,
+            ClassDescription mapperType,
+            ClassDescription copierType,
+            ClassDescription combinerType) {
         Arguments.requireNonNull(id);
         Arguments.requireNonNull(descriptor);
         this.id = id;
+        this.tag = tag;
         this.descriptor = descriptor;
         this.mapperType = mapperType;
         this.copierType = copierType;
@@ -71,6 +105,15 @@ public class ResolvedInputInfo {
      */
     public String getId() {
         return id;
+    }
+
+    /**
+     * Returns the tag.
+     * @return the tag, or {@code null} if it is not defined
+     * @since 0.2.0
+     */
+    public String getTag() {
+        return tag;
     }
 
     /**

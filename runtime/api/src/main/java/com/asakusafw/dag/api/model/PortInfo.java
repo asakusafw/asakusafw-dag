@@ -21,20 +21,34 @@ import com.asakusafw.dag.utils.common.Arguments;
 
 /**
  * Describes I/O ports of vertices.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class PortInfo implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final PortId id;
+
+    private final String tag;
 
     /**
      * Creates a new instance.
      * @param id the ID of this port
      */
     public PortInfo(PortId id) {
+        this(id, null);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param id the ID of this port
+     * @param tag the port tag (nullable)
+     */
+    public PortInfo(PortId id, String tag) {
         Arguments.requireNonNull(id);
         this.id = id;
+        this.tag = tag;
     }
 
     /**
@@ -51,6 +65,14 @@ public class PortInfo implements Serializable {
      */
     public String getName() {
         return getId().getName();
+    }
+
+    /**
+     * Returns the port tag.
+     * @return the port tag, or {@code null} if it is not defined
+     */
+    public String getTag() {
+        return tag;
     }
 
     /**

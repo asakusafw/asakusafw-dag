@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
-import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
+import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
@@ -38,7 +38,7 @@ public class BasicJdbcOutputDriverTest extends JdbcDagTestRoot {
     @Test
     public void simple() throws Exception {
         profile("testing", p -> {
-            put(driver(p), new KsvModel(0, null, "Hello, world!"));
+            put(driver(), new KsvModel(0, null, "Hello, world!"));
         });
         assertThat(select(), contains(new KsvModel(0, null, "Hello, world!")));
     }
@@ -50,7 +50,7 @@ public class BasicJdbcOutputDriverTest extends JdbcDagTestRoot {
     @Test
     public void multiple() throws Exception {
         profile("testing", p -> {
-            put(driver(p),
+            put(driver(),
                     new KsvModel(1, null, "Hello1"),
                     new KsvModel(2, null, "Hello2"),
                     new KsvModel(3, null, "Hello3"));
@@ -61,38 +61,7 @@ public class BasicJdbcOutputDriverTest extends JdbcDagTestRoot {
                 new KsvModel(3, null, "Hello3")));
     }
 
-    /**
-     * truncate.
-     * @throws Exception if failed
-     */
-    @Test
-    public void truncate() throws Exception {
-        profile("testing", p -> {
-            BasicJdbcOutputDriver driver = driver(p);
-            put(driver, new KsvModel(0, null, "Hello, world!"));
-            driver.initialize();
-        });
-        assertThat(select(), hasSize(0));
-    }
-
-    /**
-     * w/ options.
-     * @throws Exception if failed
-     */
-    @Test
-    public void options() throws Exception {
-        edit(b -> b.withMaxOutputConcurrency(123));
-        profile("testing", p -> {
-            BasicJdbcOutputDriver driver = driver(p);
-            assertThat(driver.getMaxConcurrency(), is(123));
-        });
-    }
-
-    private BasicJdbcOutputDriver driver(JdbcProfile profile) {
-        return new BasicJdbcOutputDriver(
-                profile,
-                new BasicJdbcOperationDriver(profile, JdbcUtil.getTruncateStatement(TABLE)),
-                JdbcUtil.getInsertStatement(TABLE, COLUMNS),
-                KsvJdbcAdapter::new);
+    private JdbcOutputDriver driver() {
+        return new BasicJdbcOutputDriver(JdbcUtil.getInsertStatement(TABLE, COLUMNS), KsvJdbcAdapter::new);
     }
 }

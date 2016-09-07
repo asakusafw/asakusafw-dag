@@ -16,8 +16,10 @@
 package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
+import java.sql.Connection;
 
-import com.asakusafw.dag.api.processor.ObjectWriter;
+import com.asakusafw.dag.api.common.ObjectSink;
+import com.asakusafw.dag.utils.common.InterruptibleIo;
 
 /**
  * Processes output into JDBC.
@@ -27,27 +29,28 @@ import com.asakusafw.dag.api.processor.ObjectWriter;
 public interface JdbcOutputDriver {
 
     /**
-     * Returns the max number of threads to write objects into the target resource.
-     * @return the max concurrency, or {@code -1} if it is not defined
-     */
-    default int getMaxConcurrency() {
-        return 1;
-    }
-
-    /**
-     * Initializes the target resource.
-     * @throws IOException if I/O error was occurred while initializing the target resource
-     * @throws InterruptedException if interrupted while initializing the target resource
-     */
-    default void initialize() throws IOException, InterruptedException {
-        return;
-    }
-
-    /**
      * Creates a new writer which accepts each output object.
+     * The sink never commits the current transaction, so that clients should invoke commit manually.
+     * Clients must invoke {@link Sink#flush()} before commit.
+     * @param connection the shared JDBC connection object
      * @return the created writer
-     * @throws IOException if I/O error was occurred while initializing the writer
-     * @throws InterruptedException if interrupted while initializing the writer
+     * @throws IOException if I/O error was occurred while initializing the sink
+     * @throws InterruptedException if interrupted while initializing the sink
      */
-    ObjectWriter open() throws IOException, InterruptedException;
+    Sink open(Connection connection) throws IOException, InterruptedException;
+
+    /**
+     * Represents an object sink of {@link JdbcOperationDriver}.
+     * @since 0.2.0
+     */
+    interface Sink extends ObjectSink, InterruptibleIo {
+
+        /**
+         * Flushes this sink for commit the current transaction.
+         * @return {@code true} if actually flushed, of {@code false} if there is no records to flush
+         * @throws IOException if I/O error was occurred while flushing the sink
+         * @throws InterruptedException if interrupted while flushing the sink
+         */
+        boolean flush() throws IOException, InterruptedException;
+    }
 }

@@ -47,7 +47,7 @@ public final class JdbcProfile {
 
     private final int maxOutputConcurrency;
 
-    private final Set<String> availableOptions;
+    private final Set<String> optimizations;
 
     private final Map<Class<?>, Object> extraOptions;
 
@@ -59,7 +59,7 @@ public final class JdbcProfile {
         this.insertSize = builder.insertSize;
         this.maxInputConcurrency = builder.maxInputConcurrency;
         this.maxOutputConcurrency = builder.maxOutputConcurrency;
-        this.availableOptions = Arguments.freezeToSet(builder.availableOptions);
+        this.optimizations = Arguments.freezeToSet(builder.optimizations);
         this.extraOptions = Arguments.freeze(builder.extraOptions);
     }
 
@@ -118,11 +118,11 @@ public final class JdbcProfile {
     }
 
     /**
-     * Returns the available option names.
-     * @return the available option names
+     * Returns the available optimization names.
+     * @return the available optimization names
      */
-    public Set<String> getAvailableOptions() {
-        return availableOptions;
+    public Set<String> getOptimizations() {
+        return optimizations;
     }
 
     /**
@@ -157,7 +157,7 @@ public final class JdbcProfile {
 
         int maxOutputConcurrency;
 
-        final Set<String> availableOptions = new LinkedHashSet<>();
+        final Set<String> optimizations = new LinkedHashSet<>();
 
         final Map<Class<?>, Object> extraOptions = new LinkedHashMap<>();
 
@@ -217,7 +217,7 @@ public final class JdbcProfile {
          */
         public Builder withOption(String newValue) {
             Arguments.requireNonNull(newValue);
-            this.availableOptions.add(newValue);
+            this.optimizations.add(newValue);
             return this;
         }
 
@@ -282,7 +282,7 @@ public final class JdbcProfile {
                     "fetch={0}/{1}, insert={2}/{3}, options={4}, extra={5}", //$NON-NLS-1$
                     fetchSize, maxInputConcurrency,
                     insertSize, maxOutputConcurrency,
-                    availableOptions, extraOptions.values());
+                    optimizations, extraOptions.values());
         }
     }
 }

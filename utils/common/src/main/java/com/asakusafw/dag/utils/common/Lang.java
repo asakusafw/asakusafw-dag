@@ -113,6 +113,24 @@ public final class Lang {
     }
 
     /**
+     * Applies the {@code value} to function, and returns the applied result.
+     * @param <T> the argument type
+     * @param <R> the result type
+     * @param <E> the throwable exception type
+     * @param value the value
+     * @param function the function to apply
+     * @return the function result
+     * @throws E if an exception was occurred while applying the function
+     * @since 0.2.0
+     */
+    public static <T, R, E extends Exception> R with(
+            T value,
+            FunctionWithException<? super T, ? extends R, E> function) throws E {
+        Objects.requireNonNull(function);
+        return function.apply(value);
+    }
+
+    /**
      * Executes a {@link CallableWithException}.
      * @param <T> the result type
      * @param <E> the throwable exception type

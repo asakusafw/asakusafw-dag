@@ -24,7 +24,6 @@ import com.asakusafw.dag.api.processor.TaskSchedule;
 import com.asakusafw.dag.api.processor.VertexProcessor;
 import com.asakusafw.dag.api.processor.VertexProcessorContext;
 import com.asakusafw.dag.api.processor.basic.BasicTaskSchedule;
-import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.dag.utils.common.Optionals;
 
 /**
@@ -40,7 +39,7 @@ public class VoidVertexProcessor implements VertexProcessor {
 
     @Override
     public TaskProcessor createTaskProcessor() throws IOException, InterruptedException {
-        return Lang::pass;
+        return VoidTaskProcessor.INSTANCE;
     }
 
     @Override

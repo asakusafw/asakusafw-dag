@@ -16,8 +16,13 @@
 package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -26,23 +31,35 @@ import org.slf4j.LoggerFactory;
 import com.asakusafw.bridge.stage.StageInfo;
 import com.asakusafw.dag.api.counter.CounterRepository;
 import com.asakusafw.dag.api.processor.ObjectReader;
-import com.asakusafw.dag.api.processor.ObjectWriter;
 import com.asakusafw.dag.api.processor.TaskProcessor;
 import com.asakusafw.dag.api.processor.TaskProcessorContext;
 import com.asakusafw.dag.api.processor.TaskSchedule;
 import com.asakusafw.dag.api.processor.VertexProcessor;
 import com.asakusafw.dag.api.processor.VertexProcessorContext;
+import com.asakusafw.dag.api.processor.basic.BasicTaskSchedule;
+import com.asakusafw.dag.runtime.io.UnionRecord;
+import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
+import com.asakusafw.dag.runtime.jdbc.JdbcOperationDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcOutputDriver;
+import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
+import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
+import com.asakusafw.dag.runtime.skeleton.VoidTaskProcessor;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.Invariants;
+import com.asakusafw.dag.utils.common.Tuple;
 
 /**
- * Processes JDBC output.
+ * Processes set of JDBC outputs.
  * @since 0.2.0
  */
 public class JdbcOutputProcessor implements VertexProcessor {
 
     static final Logger LOG = LoggerFactory.getLogger(JdbcOutputProcessor.class);
+
+    static final int DEFAULT_BATCH_INSERT_SIZE = 1024;
+
+    static final int DEFAULT_MAX_CONCURRENCY = -1;
 
     /**
      * The input edge name.
@@ -53,55 +70,160 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
     private volatile IoCallable<TaskProcessor> lazy;
 
-    private Spec spec;
+    private final AtomicReference<String> uniqueProfileName = new AtomicReference<>();
+
+    private final List<Spec<JdbcOperationDriver>> initializeSpecs = new ArrayList<>();
+
+    private final List<Spec<JdbcOutputDriver>> outputSpecs = new ArrayList<>();
 
     /**
-     * Binds an output.
+     * Adds an initializer.
      * @param id the output ID
-     * @param driver the output driver
+     * @param profileName the target profile name
+     * @param driver the operation driver
      * @return this
      */
-    public JdbcOutputProcessor bind(String id, JdbcOutputDriver driver) {
+    public JdbcOutputProcessor initialize(String id, String profileName, JdbcOperationDriver driver) {
         Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(driver);
-        return bind(id, context -> driver);
+        return initialize(id, profileName, (JdbcContext context) -> driver);
     }
 
     /**
-     * Binds an output.
+     * Adds an initializer.
      * @param id the output ID
+     * @param profileName the target profile name
+     * @param provider the operation driver
+     * @return this
+     */
+    public JdbcOutputProcessor initialize(
+            String id, String profileName,
+            Function<? super JdbcContext, ? extends JdbcOperationDriver> provider) {
+        Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
+        Arguments.requireNonNull(provider);
+        checkProfileName(profileName);
+        initializeSpecs.add(new Spec<>(id, provider));
+        return this;
+    }
+
+    /**
+     * Adds an output.
+     * @param id the output ID
+     * @param profileName the target profile name
+     * @param driver the output driver
+     * @return this
+     */
+    public JdbcOutputProcessor output(String id, String profileName, JdbcOutputDriver driver) {
+        Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
+        Arguments.requireNonNull(driver);
+        return output(id, profileName, (JdbcContext context) -> driver);
+    }
+
+    /**
+     * Adds an output.
+     * @param id the output ID
+     * @param profileName the target profile name
      * @param provider the output driver provider
      * @return this
      */
-    public JdbcOutputProcessor bind(String id, Function<? super JdbcContext, ? extends JdbcOutputDriver> provider) {
+    public JdbcOutputProcessor output(
+            String id, String profileName,
+            Function<? super JdbcContext, ? extends JdbcOutputDriver> provider) {
         Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(provider);
-        Invariants.require(spec == null);
-        spec = new Spec(id, provider);
+        checkProfileName(profileName);
+        outputSpecs.add(new Spec<>(id, provider));
         return this;
+    }
+
+    private void checkProfileName(String profileName) {
+        if (uniqueProfileName.compareAndSet(null, profileName) == false) {
+            Invariants.require(uniqueProfileName.get().equals(profileName));
+        }
     }
 
     @Override
     public Optional<? extends TaskSchedule> initialize(
             VertexProcessorContext context) throws IOException, InterruptedException {
         Arguments.requireNonNull(context);
-        Invariants.require(spec != null);
         Invariants.require(lazy == null);
+        String profileName = uniqueProfileName.get();
+        if (profileName == null) {
+            // no operations
+            assert initializeSpecs.isEmpty();
+            assert outputSpecs.isEmpty();
+            return getSchedule();
+        }
 
         StageInfo stage = context.getResource(StageInfo.class)
                 .orElseThrow(IllegalStateException::new);
         JdbcEnvironment environment = context.getResource(JdbcEnvironment.class)
                 .orElseThrow(IllegalStateException::new);
-        JdbcCounterGroup counter = context.getResource(CounterRepository.class)
-                .orElse(CounterRepository.DETACHED)
-                .get(JdbcCounterGroup.CATEGORY_OUTPUT, spec.id);
+        CounterRepository counters = context.getResource(CounterRepository.class)
+                .orElse(CounterRepository.DETACHED);
 
-        JdbcOutputDriver driver = spec.provider.apply(new JdbcContext.Basic(environment, stage::resolveUserVariables));
-        driver.initialize();
+        JdbcContext jdbc = new JdbcContext.Basic(environment, stage::resolveUserVariables);
+        JdbcProfile profile = environment.getProfile(profileName);
 
-        this.maxConcurrency = driver.getMaxConcurrency();
-        this.lazy = () -> new FineTask(spec.id, driver, counter);
-        return Optional.empty();
+        configureProcessor(profile);
+        runInitializers(jdbc, profile);
+        prepareOutputs(jdbc, profile, counters);
+        return getSchedule();
+    }
+
+    private Optional<? extends TaskSchedule> getSchedule() {
+        if (outputSpecs.isEmpty()) {
+            return Optional.of(new BasicTaskSchedule());
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    private void configureProcessor(JdbcProfile profile) {
+        this.maxConcurrency = profile.getMaxOutputConcurrency()
+                .orElse(DEFAULT_MAX_CONCURRENCY);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("JDBC shared output concurrency: {}", maxConcurrency);
+        }
+    }
+
+    private void runInitializers(JdbcContext context, JdbcProfile profile) throws IOException, InterruptedException {
+        try (ConnectionPool.Handle handle = profile.acquire()) {
+            for (Spec<JdbcOperationDriver> spec : initializeSpecs) {
+                JdbcOperationDriver driver = spec.provider.apply(context);
+                driver.perform(handle.getConnection());
+            }
+            handle.getConnection().commit();
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
+        }
+    }
+
+    private void prepareOutputs(JdbcContext context, JdbcProfile profile, CounterRepository counters) {
+        if (outputSpecs.isEmpty()) {
+            this.lazy = VoidTaskProcessor::new;
+            return;
+        }
+        List<Tuple<String, JdbcOutputDriver>> resolved = new ArrayList<>();
+        for (Spec<JdbcOutputDriver> spec : outputSpecs) {
+            resolved.add(new Tuple<String, JdbcOutputDriver>(spec.id, spec.provider.apply(context)));
+        }
+        this.lazy = () -> {
+            try (Closer closer = new Closer()) {
+                List<CoarseTaskUnit> units = new ArrayList<>();
+                for (Tuple<String, JdbcOutputDriver> r : resolved) {
+                    String id = r.left();
+                    JdbcOutputDriver driver = r.right();
+                    JdbcCounterGroup counter = counters.get(JdbcCounterGroup.CATEGORY_OUTPUT, id);
+                    units.add(closer.add(new CoarseTaskUnit(id, driver, counter)));
+                }
+                return new CoarseTask(profile, units.toArray(new CoarseTaskUnit[units.size()]), closer.move());
+            }
+        };
     }
 
     @Override
@@ -111,6 +233,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
     @Override
     public TaskProcessor createTaskProcessor() throws IOException, InterruptedException {
+        Invariants.require(lazy != null);
         return lazy.call();
     }
 
@@ -118,16 +241,16 @@ public class JdbcOutputProcessor implements VertexProcessor {
     public String toString() {
         return MessageFormat.format(
                 "JdbcOutput({0})", //$NON-NLS-1$
-                spec == null ? "?" : spec.id); //$NON-NLS-1$
+                outputSpecs.size());
     }
 
-    private static final class Spec {
+    private static final class Spec<T> {
 
         final String id;
 
-        final Function<? super JdbcContext, ? extends JdbcOutputDriver> provider;
+        final Function<? super JdbcContext, ? extends T> provider;
 
-        Spec(String id, Function<? super JdbcContext, ? extends JdbcOutputDriver> provider) {
+        Spec(String id, Function<? super JdbcContext, ? extends T> provider) {
             assert id != null;
             assert provider != null;
             this.id = id;
@@ -140,7 +263,99 @@ public class JdbcOutputProcessor implements VertexProcessor {
         }
     }
 
-    private static final class FineTask implements TaskProcessor {
+    private static final class CoarseTask implements TaskProcessor {
+
+        private final JdbcProfile profile;
+
+        private final CoarseTaskUnit[] units;
+
+        private final Closer closer;
+
+        private Connection connection;
+
+        private final int windowSize;
+
+        private int windowOffset;
+
+        private boolean sawError;
+
+        CoarseTask(
+                JdbcProfile profile,
+                CoarseTaskUnit[] units,
+                Closer closer) throws IOException, InterruptedException {
+            try (Closer c = closer) {
+                this.profile = profile;
+                this.units = units;
+                this.windowSize = profile.getBatchInsertSize().orElse(DEFAULT_BATCH_INSERT_SIZE);
+                this.closer = c.move();
+            }
+        }
+
+        @Override
+        public void run(TaskProcessorContext context) throws IOException, InterruptedException {
+            if (connection == null) {
+                connection = closer.add(profile.acquire()).getConnection();
+                windowOffset = 0;
+            }
+            Connection conn = connection;
+            int rest = windowSize - windowOffset;
+            CoarseTaskUnit[] us = units;
+            try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME)) {
+                while (reader.nextObject()) {
+                    UnionRecord union = (UnionRecord) reader.getObject();
+                    us[union.tag].write(conn, union.entity);
+                    if (--rest <= 0) {
+                        flush();
+                        rest = windowSize;
+                    }
+                }
+            } catch (Throwable t) {
+                sawError = true;
+                throw t;
+            }
+            windowOffset = windowSize - rest;
+        }
+
+        @Override
+        public void close() throws IOException, InterruptedException {
+            try {
+                if (connection != null && sawError == false && windowOffset > 0) {
+                    flush();
+                    windowOffset = 0;
+                }
+            } finally {
+                closer.close();
+            }
+        }
+
+        private void flush() throws IOException, InterruptedException {
+            try {
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("committing {} records", windowOffset);
+                }
+                boolean flushed = false;
+                CoarseTaskUnit[] us = units;
+                for (CoarseTaskUnit u : us) {
+                    flushed |= u.flush();
+                }
+                if (flushed) {
+                    assert connection != null;
+                    connection.commit();
+                }
+            } catch (SQLException e) {
+                throw JdbcUtil.wrap(e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return MessageFormat.format(
+                    "JdbcOutput({0})", //$NON-NLS-1$
+                    units.length);
+        }
+    }
+
+    private static final class CoarseTaskUnit implements InterruptibleIo {
 
         private final String id;
 
@@ -148,7 +363,12 @@ public class JdbcOutputProcessor implements VertexProcessor {
 
         private final JdbcCounterGroup counter;
 
-        FineTask(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
+        private JdbcOutputDriver.Sink sink;
+
+        // NOTE: count <= CoarseTask.windowSize (int)
+        private int count;
+
+        CoarseTaskUnit(String id, JdbcOutputDriver driver, JdbcCounterGroup counter) {
             Arguments.requireNonNull(id);
             Arguments.requireNonNull(driver);
             Arguments.requireNonNull(counter);
@@ -157,31 +377,33 @@ public class JdbcOutputProcessor implements VertexProcessor {
             this.counter = counter;
         }
 
-        @Override
-        public void run(TaskProcessorContext context) throws IOException, InterruptedException {
-            LOG.debug("starting JDBC output: {} ({})", id, driver); //$NON-NLS-1$
-            try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME);
-                    ObjectWriter writer = driver.open()) {
-                long count = 0L;
-                while (reader.nextObject()) {
-                    count++;
-                    Object obj = reader.getObject();
-                    writer.putObject(obj);
-                }
-                counter.add(count);
-            } catch (Throwable t) {
-                LOG.error(MessageFormat.format(
-                        "error occurred while writing output: {0}",
-                        id), t);
-                throw t;
+        void write(Connection connection, Object object) throws IOException, InterruptedException {
+            JdbcOutputDriver.Sink s = sink;
+            if (s == null) {
+                LOG.debug("starting JDBC output: {} ({})", id, driver); //$NON-NLS-1$
+                sink = driver.open(connection);
+                s = sink;
             }
+            s.putObject(object);
+            count++;
+        }
+
+        boolean flush() throws IOException, InterruptedException {
+            if (sink != null) {
+                boolean flushed = sink.flush();
+                counter.add(count);
+                count = 0;
+                return flushed;
+            }
+            return false;
         }
 
         @Override
-        public String toString() {
-            return MessageFormat.format(
-                    "JdbcOutput[Fine](id={0}, driver={1})", //$NON-NLS-1$
-                    id, driver);
+        public void close() throws IOException, InterruptedException {
+            if (sink != null) {
+                sink.close();
+                sink = null;
+            }
         }
     }
 }

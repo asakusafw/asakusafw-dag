@@ -18,6 +18,8 @@ package com.asakusafw.dag.runtime.jdbc.basic;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
+import java.sql.Connection;
+
 import org.junit.Test;
 
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
@@ -38,9 +40,10 @@ public class BasicJdbcOperationDriverTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        profile("testing", p -> {
-            new BasicJdbcOperationDriver(p, JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 2")).perform();
-        });
+        try (Connection conn = h2.open()) {
+            new BasicJdbcOperationDriver(JdbcUtil.getDeleteStatement(TABLE, "M_KEY = 2")).perform(conn);
+            conn.commit();
+        }
         assertThat(select(), contains(
                 new KsvModel(1, null, "Hello1"),
                 new KsvModel(3, null, "Hello3")));

@@ -33,16 +33,16 @@ import org.junit.Rule;
 import org.junit.rules.ExternalResource;
 
 import com.asakusafw.dag.api.processor.ObjectReader;
-import com.asakusafw.dag.api.processor.ObjectWriter;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcContext;
 import com.asakusafw.dag.runtime.jdbc.operation.JdbcEnvironment;
 import com.asakusafw.dag.runtime.jdbc.testing.H2Resource;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
+import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Action;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
-import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
+import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.runtime.util.VariableTable;
 
 /**
@@ -70,11 +70,16 @@ public abstract class JdbcDagTestRoot {
             COLUMNS.get(0));
 
     /**
+     * DDL format.
+     */
+    public static final String DDL_FORMAT = "CREATE TABLE %s(M_KEY BIGINT NOT NULL, M_SORT DECIMAL(18,2), M_VALUE VARCHAR(256))";
+
+    /**
      * H2 resource.
      */
     @Rule
     public final H2Resource h2 = new H2Resource("cp")
-        .with("CREATE TABLE KSV(M_KEY BIGINT NOT NULL, M_SORT DECIMAL(18,2), M_VALUE VARCHAR(256))");
+        .with(String.format(DDL_FORMAT, TABLE));
 
     /**
      * Closes resources.
@@ -200,18 +205,19 @@ public abstract class JdbcDagTestRoot {
      */
     public List<KsvModel> select() throws SQLException {
         try (Connection c = h2.open()) {
-            return select(c);
+            return select(c, TABLE);
         }
     }
 
     /**
      * Returns all records from {@code KSV} table.
      * @param connection the current connection
+     * @param table the table name
      * @return the results
      * @throws SQLException if error was occurred
      */
-    public List<KsvModel> select(Connection connection) throws SQLException {
-        String sql = "SELECT M_KEY, M_SORT, M_VALUE FROM KSV ORDER BY M_KEY, M_SORT";
+    public List<KsvModel> select(Connection connection, String table) throws SQLException {
+        String sql = String.format("SELECT M_KEY, M_SORT, M_VALUE FROM %s ORDER BY M_KEY, M_SORT", table);
         List<KsvModel> results = new ArrayList<>();
         try (Statement statement = connection.createStatement();
                 ResultSet rs = statement.executeQuery(sql)) {
@@ -318,10 +324,30 @@ public abstract class JdbcDagTestRoot {
      * @throws InterruptedException if interrupted
      */
     public void put(JdbcOutputDriver driver, Object... values) throws IOException, InterruptedException {
-        try (ObjectWriter writer = driver.open()) {
+        try (Connection conn = h2.open();
+                JdbcOutputDriver.Sink sink = driver.open(conn)) {
             for (Object value : values) {
-                writer.putObject(value);
+                sink.putObject(value);
             }
+            sink.flush();
+            conn.commit();
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
+        }
+    }
+
+    /**
+     * Performs the operation driver.
+     * @param driver the driver
+     * @throws IOException if error was occurred
+     * @throws InterruptedException if interrupted
+     */
+    public void perform(JdbcOperationDriver driver) throws IOException, InterruptedException {
+        try (Connection conn = h2.open()) {
+            driver.perform(conn);
+            conn.commit();
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
         }
     }
 }

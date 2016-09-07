@@ -69,7 +69,7 @@ public class JdbcEnvironmentInstallerTest extends JdbcDagTestRoot {
         assertThat(profile.getBatchInsertSize().getAsInt(), is(DEFAULT_BATCH_INSERT_SIZE));
         assertThat(profile.getMaxInputConcurrency().getAsInt(), is(DEFAULT_INPUT_THREADS));
         assertThat(profile.getMaxOutputConcurrency().getAsInt(), is(DEFAULT_OUTPUT_THREADS));
-        assertThat(profile.getAvailableOptions(), hasSize(0));
+        assertThat(profile.getOptimizations(), hasSize(0));
         assertThat(profile.getOption(OutputClearKind.class), is(Optional.empty()));
     }
 

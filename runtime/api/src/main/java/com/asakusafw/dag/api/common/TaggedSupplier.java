@@ -13,24 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.api.common;
 
-import java.io.IOException;
-import java.sql.Connection;
+import java.util.function.Supplier;
 
 /**
- * Processes operations via JDBC with using shared connections.
+ * An abstract super interface of {@link Supplier} that accepts custom tags.
+ * @param <T> the supplying type
  * @since 0.2.0
  */
 @FunctionalInterface
-public interface JdbcOperationDriver {
+public interface TaggedSupplier<T> extends Supplier<T> {
 
     /**
-     * Performs this operation.
-     * This never commits the current transaction.
-     * @param connection the shared JDBC connection
-     * @throws IOException if I/O error was occurred while performing the operation
-     * @throws InterruptedException if interrupted while performing the operation
+     * Returns an object for tag.
+     * @param tag the optional tag (nullable)
+     * @return the object
      */
-    void perform(Connection connection) throws IOException, InterruptedException;
+    T get(String tag);
+
+    @Override
+    default T get() {
+        return get(null);
+    }
 }

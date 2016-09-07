@@ -13,24 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
-
-import java.io.IOException;
-import java.sql.Connection;
+package com.asakusafw.dag.utils.common;
 
 /**
- * Processes operations via JDBC with using shared connections.
+ * Represents a function which may raise exceptions.
+ * @param <T> the argument type
+ * @param <R> the result type
+ * @param <E> the throwable exception type
  * @since 0.2.0
  */
 @FunctionalInterface
-public interface JdbcOperationDriver {
+public interface FunctionWithException<T, R, E extends Exception> {
 
     /**
-     * Performs this operation.
-     * This never commits the current transaction.
-     * @param connection the shared JDBC connection
-     * @throws IOException if I/O error was occurred while performing the operation
-     * @throws InterruptedException if interrupted while performing the operation
+     * Applies this function to the given argument.
+     * @param argument the argument
+     * @return the result
+     * @throws E if an exception was occurred while applying the function
      */
-    void perform(Connection connection) throws IOException, InterruptedException;
+    R apply(T argument) throws E;
 }

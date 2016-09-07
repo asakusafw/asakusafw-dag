@@ -79,13 +79,14 @@ public final class WindGateJdbcDirect {
         return new InputBuilder(profileName, tableName, columnNames, adapters);
     }
 
-    static Function<? super JdbcContext, ? extends JdbcInputDriver> input(
-            String profileName,
-            String tableName,
-            List<String> columnNames,
-            String condition,
-            Supplier<? extends ResultSetAdapter<?>> adapters,
-            Set<String> options) {
+    static Function<? super JdbcContext, ? extends JdbcInputDriver> input(InputBuilder builder) {
+        Arguments.requireNonNull(builder);
+        String profileName = builder.profileName;
+        String tableName = builder.tableName;
+        List<String> columnNames = builder.columnNames;
+        String condition = builder.condition;
+        Set<String> options = builder.options;
+        Supplier<? extends ResultSetAdapter<?>> adapters = builder.adapters;
         return context -> {
             JdbcProfile profile = context.getEnvironment().getProfile(profileName);
             Optional<String> cond = resolve(context, condition);
@@ -154,24 +155,17 @@ public final class WindGateJdbcDirect {
         return new OutputBuilder(profileName, tableName, columnNames, adapters);
     }
 
-    static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(
-            String profileName,
-            String tableName,
-            List<String> columnNames,
-            String customTruncate,
-            Supplier<? extends PreparedStatementAdapter<?>> adapters,
-            Set<String> options) {
-        Arguments.requireNonNull(profileName);
-        Arguments.requireNonNull(tableName);
-        Arguments.requireNonNull(columnNames);
-        Arguments.requireNonNull(adapters);
-        Arguments.requireNonNull(options);
+    static Function<? super JdbcContext, ? extends JdbcOutputDriver> output(OutputBuilder builder) {
+        Arguments.requireNonNull(builder);
+        String profileName = builder.profileName;
+        String tableName = builder.tableName;
+        List<String> columnNames = builder.columnNames;
+        Set<String> options = builder.options;
+        Supplier<? extends PreparedStatementAdapter<?>> adapters = builder.adapters;
         return context -> {
             JdbcProfile profile = context.getEnvironment().getProfile(profileName);
-            JdbcOperationDriver truncate =
-                    truncate(context, profileName, tableName, columnNames, customTruncate, options);
             String insert = buildInsertStatement(profile, tableName, columnNames, options);
-            return new BasicJdbcOutputDriver(profile, truncate, insert, adapters);
+            return new BasicJdbcOutputDriver(insert, adapters);
         };
     }
 
@@ -186,16 +180,13 @@ public final class WindGateJdbcDirect {
         return new TruncateBuilder(profileName, tableName, columnNames);
     }
 
-    static Function<? super JdbcContext, ? extends JdbcOperationDriver> truncate(
-            String profileName,
-            String tableName,
-            List<String> columnNames,
-            String customTruncate,
-            Set<String> options) {
-        Arguments.requireNonNull(profileName);
-        Arguments.requireNonNull(tableName);
-        Arguments.requireNonNull(columnNames);
-        Arguments.requireNonNull(options);
+    static Function<? super JdbcContext, ? extends JdbcOperationDriver> truncate(TruncateBuilder builder) {
+        Arguments.requireNonNull(builder);
+        String profileName = builder.profileName;
+        String tableName = builder.tableName;
+        List<String> columnNames = builder.columnNames;
+        String customTruncate = builder.customTruncate;
+        Set<String> options = builder.options;
         return context -> truncate(context, profileName, tableName, columnNames, customTruncate, options);
     }
 
@@ -206,11 +197,11 @@ public final class WindGateJdbcDirect {
             Set<String> options) {
         JdbcProfile profile = context.getEnvironment().getProfile(profileName);
         String statement = resolve(context, customTruncate)
-            .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options));
+                .orElseGet(() -> buildTruncateStatement(profile, tableName, columnNames, options));
         if (statement == null) {
-            return () -> Lang.pass();
+            return connection -> Lang.pass();
         } else {
-            return new BasicJdbcOperationDriver(profile, statement);
+            return new BasicJdbcOperationDriver(statement);
         }
     }
 
@@ -219,7 +210,7 @@ public final class WindGateJdbcDirect {
     }
 
     private static boolean isActive(JdbcProfile profile, Set<String> options, String key) {
-        return profile.getAvailableOptions().contains(key) && options.contains(key);
+        return profile.getOptimizations().contains(key) && options.contains(key);
     }
 
     private static String buildSelectStatement(
@@ -360,7 +351,7 @@ public final class WindGateJdbcDirect {
          * @return the built object
          */
         public Function<? super JdbcContext, ? extends JdbcInputDriver> build() {
-            return input(profileName, tableName, columnNames, condition, adapters, options);
+            return WindGateJdbcDirect.input(this);
         }
 
         /**
@@ -386,8 +377,6 @@ public final class WindGateJdbcDirect {
         final List<String> columnNames;
 
         final Supplier<? extends PreparedStatementAdapter<?>> adapters;
-
-        String customTruncate;
 
         final Set<String> options = new LinkedHashSet<>();
 
@@ -436,21 +425,11 @@ public final class WindGateJdbcDirect {
         }
 
         /**
-         * Sets the optional custom truncate statement.
-         * @param value the statement
-         * @return this
-         */
-        public OutputBuilder withCustomTruncate(String value) {
-            this.customTruncate = value;
-            return this;
-        }
-
-        /**
          * Builds a driver provider.
          * @return the built object
          */
         public Function<? super JdbcContext, ? extends JdbcOutputDriver> build() {
-            return output(profileName, tableName, columnNames, customTruncate, adapters, options);
+            return WindGateJdbcDirect.output(this);
         }
 
         /**
@@ -533,7 +512,7 @@ public final class WindGateJdbcDirect {
          * @return the built object
          */
         public Function<? super JdbcContext, ? extends JdbcOperationDriver> build() {
-            return truncate(profileName, tableName, columnNames, customTruncate, options);
+            return WindGateJdbcDirect.truncate(this);
         }
 
         /**

@@ -13,24 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.runtime.jdbc;
+package com.asakusafw.dag.runtime.skeleton;
 
 import java.io.IOException;
-import java.sql.Connection;
+
+import com.asakusafw.dag.api.processor.TaskProcessor;
+import com.asakusafw.dag.api.processor.TaskProcessorContext;
 
 /**
- * Processes operations via JDBC with using shared connections.
+ * A {@link TaskProcessor} which does nothing.
  * @since 0.2.0
  */
-@FunctionalInterface
-public interface JdbcOperationDriver {
+public class VoidTaskProcessor implements TaskProcessor {
 
     /**
-     * Performs this operation.
-     * This never commits the current transaction.
-     * @param connection the shared JDBC connection
-     * @throws IOException if I/O error was occurred while performing the operation
-     * @throws InterruptedException if interrupted while performing the operation
+     * A instance of this class.
      */
-    void perform(Connection connection) throws IOException, InterruptedException;
+    public static final TaskProcessor INSTANCE = new VoidTaskProcessor();
+
+    @Override
+    public void run(TaskProcessorContext context) throws IOException, InterruptedException {
+        return;
+    }
+
+    @Override
+    public String toString() {
+        return "no-operations"; //$NON-NLS-1$
+    }
 }
