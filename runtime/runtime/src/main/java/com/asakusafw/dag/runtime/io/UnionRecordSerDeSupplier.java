@@ -36,6 +36,7 @@ import com.asakusafw.dag.api.common.ValueSerDe;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Invariants;
 import com.asakusafw.dag.utils.common.Lang;
+import com.asakusafw.dag.utils.common.Tuple;
 
 /**
  * A {@link TaggedSupplier} of{@link ValueSerDe} for {@link UnionRecord}.
@@ -43,7 +44,9 @@ import com.asakusafw.dag.utils.common.Lang;
  */
 public class UnionRecordSerDeSupplier implements TaggedSupplier<ValueSerDe> {
 
-    private final Map<String, List<Supplier<Encoder>>> upstreams = new HashMap<>();
+    static final int CONTINUE_MASK = 1 << 31;
+
+    private final Map<String, List<Tuple<Integer, Supplier<? extends Serializer>>>> upstreams = new HashMap<>();
 
     private final List<Supplier<? extends Deserializer>> downstreams = new ArrayList<>();
 
@@ -75,7 +78,7 @@ public class UnionRecordSerDeSupplier implements TaggedSupplier<ValueSerDe> {
         for (String tag : tags) {
             Invariants.require(saw.contains(tag) == false);
             Invariants.require(downstreamNames.contains(tag) == false);
-            upstreams.computeIfAbsent(tag, s -> new ArrayList<>()).add(() -> new Encoder(index, element.get()));
+            upstreams.computeIfAbsent(tag, s -> new ArrayList<>()).add(new Tuple<>(index, element));
             saw.add(tag);
         }
         downstreams.add(element);
@@ -97,14 +100,21 @@ public class UnionRecordSerDeSupplier implements TaggedSupplier<ValueSerDe> {
     @Override
     public ValueSerDe get(String tag) {
         if (upstreams.containsKey(tag)) {
-            List<Supplier<Encoder>> elements = upstreams.get(tag);
+            List<Tuple<Integer, Supplier<? extends Serializer>>> elements = upstreams.get(tag);
             if (elements.size() == 1) {
-                return elements.get(0).get();
+                Tuple<Integer, Supplier<? extends Serializer>> first = elements.get(0);
+                return new Encoder(first.left(), first.right().get());
             } else {
-                return new Multiplexer(elements.stream()
+                int[] indices = elements.stream()
                         .sequential()
+                        .mapToInt(Tuple::left)
+                        .toArray();
+                Serializer[] serializers = elements.stream()
+                        .sequential()
+                        .map(Tuple::right)
                         .map(Supplier::get)
-                        .toArray(Encoder[]::new));
+                        .toArray(Serializer[]::new);
+                return new EncoderMultiplexer(indices, serializers);
             }
         } else if (downstreamNames.contains(tag)) {
             return new Decoder(downstreams.stream()
@@ -141,19 +151,29 @@ public class UnionRecordSerDeSupplier implements TaggedSupplier<ValueSerDe> {
         }
     }
 
-    private static final class Multiplexer implements ValueSerDe {
+    private static final class EncoderMultiplexer implements ValueSerDe {
 
-        private final Encoder[] elements;
+        private final int[] indices;
 
-        Multiplexer(Encoder[] elements) {
-            this.elements = elements;
+        private final Serializer[] elements;
+
+        EncoderMultiplexer(int[] indices, Serializer[] elements) {
+            assert indices.length == elements.length;
+            int[] is = indices.clone();
+            for (int i = 0, n = is.length - 1; i < n; i++) {
+                is[i] = is[i] | CONTINUE_MASK;
+            }
+            this.indices = is;
+            this.elements = elements.clone();
         }
 
         @Override
         public void serialize(Object object, DataOutput output) throws IOException, InterruptedException {
-            Encoder[] es = elements;
-            for (Encoder s : es) {
-                s.serialize(object, output);
+            int[] is = indices;
+            Serializer[] es = elements;
+            for (int i = 0, n = is.length; i < n; i++) {
+                output.writeInt(is[i]);
+                es[i].serialize(object, output);
             }
         }
 
@@ -180,11 +200,23 @@ public class UnionRecordSerDeSupplier implements TaggedSupplier<ValueSerDe> {
 
         @Override
         public Object deserialize(DataInput input) throws IOException, InterruptedException {
+            Deserializer[] es = elements;
             UnionRecord union = buffer;
-            int index = input.readInt();
-            union.tag = index;
-            union.entity = elements[index].deserialize(input);
-            return union;
+            UnionRecord current = union;
+            while (true) {
+                int index = input.readInt();
+                if ((index & CONTINUE_MASK) == 0) {
+                    current.tag = index;
+                    current.entity = es[index].deserialize(input);
+                    current.next = null;
+                    return union;
+                } else {
+                    int actualIndex = index & ~CONTINUE_MASK;
+                    current.tag = actualIndex;
+                    current.entity = es[actualIndex].deserialize(input);
+                    current = current.prepareNext();
+                }
+            }
         }
     }
 }

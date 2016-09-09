@@ -302,11 +302,12 @@ public class JdbcOutputProcessor implements VertexProcessor {
             CoarseTaskUnit[] us = units;
             try (ObjectReader reader = (ObjectReader) context.getInput(INPUT_NAME)) {
                 while (reader.nextObject()) {
-                    UnionRecord union = (UnionRecord) reader.getObject();
-                    us[union.tag].write(conn, union.entity);
-                    if (--rest <= 0) {
-                        flush();
-                        rest = windowSize;
+                    for (UnionRecord union = (UnionRecord) reader.getObject(); union != null; union = union.next) {
+                        us[union.tag].write(conn, union.entity);
+                        if (--rest <= 0) {
+                            flush();
+                            rest = windowSize;
+                        }
                     }
                 }
             } catch (Throwable t) {

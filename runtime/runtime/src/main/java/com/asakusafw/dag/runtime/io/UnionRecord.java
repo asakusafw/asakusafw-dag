@@ -21,7 +21,7 @@ import java.util.Objects;
  * Represents a tagged union record.
  * @since 0.2.0
  */
-public class UnionRecord {
+public final class UnionRecord {
 
     /**
      * The value tag.
@@ -32,6 +32,13 @@ public class UnionRecord {
      * The actual value.
      */
     public Object entity;
+
+    /**
+     * The next record.
+     */
+    public UnionRecord next;
+
+    private UnionRecord nextCache;
 
     /**
      * Creates a new empty instance.
@@ -46,8 +53,19 @@ public class UnionRecord {
      * @param entity the actual value
      */
     public UnionRecord(int tag, Object entity) {
+        this(tag, entity, null);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param tag the value tag
+     * @param entity the actual value
+     * @param next the next record (nullable)
+     */
+    public UnionRecord(int tag, Object entity, UnionRecord next) {
         this.tag = tag;
         this.entity = entity;
+        this.next = next;
     }
 
     /**
@@ -66,12 +84,31 @@ public class UnionRecord {
         return entity;
     }
 
+    /**
+     * Returns the next record.
+     * @return the next record, or {@code null} if it does not exist
+     */
+    public UnionRecord getNext() {
+        return next;
+    }
+
+    UnionRecord prepareNext() {
+        UnionRecord cache = nextCache;
+        if (cache == null) {
+            cache = new UnionRecord();
+            nextCache = cache;
+        }
+        next = cache;
+        return cache;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
         result = prime * result + tag;
         result = prime * result + Objects.hashCode(entity);
+        result = prime * result + Objects.hashCode(next);
         return result;
     }
 
@@ -93,11 +130,27 @@ public class UnionRecord {
         if (!Objects.equals(entity, other.entity)) {
             return false;
         }
+        if (!Objects.equals(next, other.next)) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public String toString() {
-        return String.format("Union(tag=%d, entity=%s)", tag, entity); //$NON-NLS-1$
+        StringBuilder buf = new StringBuilder();
+        buf.append('(');
+        appendTo(buf);
+        buf.append(')');
+        return buf.toString();
+    }
+
+    private void appendTo(StringBuilder buf) {
+        buf.append(tag);
+        buf.append(':').append(entity);
+        if (next != null) {
+            buf.append(", ");
+            next.appendTo(buf);
+        }
     }
 }

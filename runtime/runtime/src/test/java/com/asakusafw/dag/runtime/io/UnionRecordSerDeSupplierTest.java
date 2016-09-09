@@ -83,8 +83,7 @@ public class UnionRecordSerDeSupplierTest {
         supplier.get("c").serialize(300, buffer);
         ValueSerDe deser = supplier.get();
         assertThat(deser.deserialize(buffer), is(new UnionRecord(0, 101)));
-        assertThat(deser.deserialize(buffer), is(new UnionRecord(0, 201)));
-        assertThat(deser.deserialize(buffer), is(new UnionRecord(1, 202)));
+        assertThat(deser.deserialize(buffer), is(new UnionRecord(0, 201, new UnionRecord(1, 202))));
         assertThat(deser.deserialize(buffer), is(new UnionRecord(1, 302)));
     }
 }
