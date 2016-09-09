@@ -121,23 +121,24 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
     }
 
     @Override
-    public List<? extends JdbcInputDriver.Partition> getPartitions() throws IOException, InterruptedException {
-        Optional<Stats> stats = getStats();
+    public List<? extends JdbcInputDriver.Partition> getPartitions(
+            Connection connection) throws IOException, InterruptedException {
+        Optional<Stats> stats = getStats(connection);
         List<?> boundValues = stats
                 .map(this::computeBoundValues)
                 .orElse(Collections.emptyList());
         if (boundValues.isEmpty()) {
+            int fetchSize = profile.getFetchSize().orElse(-1);
             String sql = JdbcUtil.getSelectStatement(tableName, columnNames, condition);
-            return Collections.singletonList(() -> BasicJdbcInputDriver.open(profile, sql, adapters.get()));
+            return Collections.singletonList(conn -> BasicJdbcInputDriver.open(conn, sql, adapters.get(), fetchSize));
         }
         return buildPartitions(stats.get(), boundValues);
     }
 
-    private Optional<Stats> getStats() throws IOException, InterruptedException {
+    private Optional<Stats> getStats(Connection connection) throws IOException, InterruptedException {
         String sql = getStatsSql();
         LOG.debug("split stats: {}", sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
-            Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();
             closer.add(JdbcUtil.wrap(statement::close));
             ResultSet rs = statement.executeQuery(sql);
@@ -333,7 +334,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         if (stats.nullable) {
             buf.append(")"); //$NON-NLS-1$
         }
-        return new Partition(profile, buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
+        return new Partition(buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
     }
 
     private Partition toBodyPartition(Stats stats, Object lower, Object upper) {
@@ -348,7 +349,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         buf.append(" AND "); //$NON-NLS-1$
         buf.append(splitColumnName);
         buf.append(" < ?"); //$NON-NLS-1$
-        return new Partition(profile, buf.toString(), Arrays.asList(lower, upper), stats.typeId, adapters.get());
+        return new Partition(buf.toString(), Arrays.asList(lower, upper), stats.typeId, adapters.get());
     }
 
     private Partition toUpperPartition(Stats stats, Object value) {
@@ -360,7 +361,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         }
         buf.append("? <= "); //$NON-NLS-1$
         buf.append(splitColumnName);
-        return new Partition(profile, buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
+        return new Partition(buf.toString(), Collections.singletonList(value), stats.typeId, adapters.get());
     }
 
     private StringBuilder getQueryPrefix() {
@@ -397,8 +398,6 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
     private static class Partition implements JdbcInputDriver.Partition {
 
-        private final JdbcProfile profile;
-
         private final String sql;
 
         private final List<?> arguments;
@@ -407,8 +406,7 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
 
         private final ResultSetAdapter<?> adapter;
 
-        Partition(JdbcProfile profile, String sql, List<?> arguments, int argumentType, ResultSetAdapter<?> adapter) {
-            this.profile = profile;
+        Partition(String sql, List<?> arguments, int argumentType, ResultSetAdapter<?> adapter) {
             this.sql = sql;
             this.arguments = arguments;
             this.argumentType = argumentType;
@@ -416,10 +414,9 @@ public class SplitJdbcInputDriver implements JdbcInputDriver {
         }
 
         @Override
-        public ObjectReader open() throws IOException, InterruptedException {
+        public ObjectReader open(Connection connection) throws IOException, InterruptedException {
             LOG.debug("split SELECT: {} :: {}", sql, arguments); //$NON-NLS-1$
             try (Closer closer = new Closer()) {
-                Connection connection = closer.add(profile.acquire()).getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql);
                 closer.add(JdbcUtil.wrap(statement::close));
                 for (int i = 0, n = arguments.size(); i < n; i++) {

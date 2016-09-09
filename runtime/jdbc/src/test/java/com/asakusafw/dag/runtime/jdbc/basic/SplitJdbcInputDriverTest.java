@@ -235,16 +235,12 @@ public class SplitJdbcInputDriverTest extends JdbcDagTestRoot {
         });
     }
 
-    private List<? extends Partition> get(
-            JdbcProfile profile,
-            String split,
-            int count,
-            String condition) throws IOException, InterruptedException {
-        return new SplitJdbcInputDriver(
+    private List<? extends Partition> get(JdbcProfile profile, String split, int count, String condition) {
+        return connect(new SplitJdbcInputDriver(
                 profile,
                 TABLE, COLUMNS,
                 split, count, condition,
-                KsvJdbcAdapter::new).getPartitions();
+                KsvJdbcAdapter::new)::getPartitions);
     }
 
     private List<List<KsvModel>> sort(List<? extends Partition> parts) throws IOException, InterruptedException {
@@ -272,16 +268,12 @@ public class SplitJdbcInputDriverTest extends JdbcDagTestRoot {
         return model;
     }
 
-    private List<? extends Partition> getTime(
-            JdbcProfile profile,
-            String split,
-            int count,
-            String condition) throws IOException, InterruptedException {
-        return new SplitJdbcInputDriver(
+    private List<? extends Partition> getTime(JdbcProfile profile, String split, int count, String condition) {
+        return connect(new SplitJdbcInputDriver(
                 profile,
                 "TEMPORAL", Arrays.asList("M_KEY", "M_DATE", "M_TIMESTAMP"),
                 split, count, condition,
-                TimeJdbcAdapter::new).getPartitions();
+                TimeJdbcAdapter::new)::getPartitions);
     }
 
     private List<List<TimeModel>> sortTime(List<? extends Partition> parts) throws IOException, InterruptedException {
@@ -300,10 +292,12 @@ public class SplitJdbcInputDriverTest extends JdbcDagTestRoot {
         List<List<T>> results = new ArrayList<>();
         for (Partition p : parts) {
             List<T> sub = new ArrayList<>();
-            try (ObjectReader reader = p.open()) {
+            try (Connection c = h2.open(); ObjectReader reader = p.open(c)) {
                 while (reader.nextObject()) {
                     sub.add(copier.apply((T) reader.getObject()));
                 }
+            } catch (SQLException e) {
+                throw JdbcUtil.wrap(e);
             }
             sub.sort(comparator);
             LOG.debug("{}: {}, sample={}", results.size(), sub.size(), sub.isEmpty() ? null : sub.get(0));

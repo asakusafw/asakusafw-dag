@@ -108,6 +108,7 @@ public final class WindGateJdbcInputAdapterGenerator {
             for (Spec spec : specs) {
                 self.load(v);
                 getConst(v, spec.id);
+                getConst(v, spec.model.getProfileName());
 
                 getConst(v, spec.model.getProfileName());
                 getConst(v, spec.model.getTableName());
@@ -141,9 +142,9 @@ public final class WindGateJdbcInputAdapterGenerator {
                         Type.getMethodDescriptor(typeOf(Function.class)),
                         false);
                 v.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
-                        target.getInternalName(), "bind", //$NON-NLS-1$
+                        target.getInternalName(), "input", //$NON-NLS-1$
                         Type.getMethodDescriptor(typeOf(JdbcInputAdapter.class),
-                                typeOf(String.class), typeOf(Function.class)),
+                                typeOf(String.class), typeOf(String.class), typeOf(Function.class)),
                         false);
                 v.visitInsn(Opcodes.POP);
             }

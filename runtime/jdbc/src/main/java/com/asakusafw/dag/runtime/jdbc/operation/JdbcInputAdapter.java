@@ -16,8 +16,10 @@
 package com.asakusafw.dag.runtime.jdbc.operation;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import com.asakusafw.bridge.stage.StageInfo;
@@ -33,9 +35,12 @@ import com.asakusafw.dag.runtime.adapter.ExtractOperation.Input;
 import com.asakusafw.dag.runtime.adapter.InputAdapter;
 import com.asakusafw.dag.runtime.adapter.InputHandler;
 import com.asakusafw.dag.runtime.adapter.InputHandler.InputSession;
+import com.asakusafw.dag.runtime.jdbc.ConnectionPool;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver.Partition;
+import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.utils.common.Arguments;
+import com.asakusafw.dag.utils.common.Invariants;
 
 /**
  * {@link InputAdapter} for JDBC inputs.
@@ -47,7 +52,9 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
     private final List<Spec> specs = new ArrayList<>();
 
-    private final CounterRepository counterRoot;
+    private final AtomicReference<String> uniqueProfileName = new AtomicReference<>();
+
+    private final CounterRepository counters;
 
     /**
      * Creates a new instance.
@@ -60,47 +67,70 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
         JdbcEnvironment environment = context.getResource(JdbcEnvironment.class)
                 .orElseThrow(IllegalStateException::new);
         this.jdbc = new JdbcContext.Basic(environment, stage::resolveUserVariables);
-        this.counterRoot = context.getResource(CounterRepository.class)
+        this.counters = context.getResource(CounterRepository.class)
                 .orElse(CounterRepository.DETACHED);
     }
 
     /**
      * Adds an input.
      * @param id the input ID
+     * @param profileName the target profile name
      * @param driver the input driver
      * @return this
      */
-    public final JdbcInputAdapter bind(String id, JdbcInputDriver driver) {
+    public final JdbcInputAdapter input(String id, String profileName, JdbcInputDriver driver) {
         Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(driver);
-        return bind(id, context -> driver);
+        return input(id, profileName, (JdbcContext context) -> driver);
     }
 
     /**
      * Adds an input.
      * @param id the input ID
+     * @param profileName the target profile name
      * @param provider the input driver provider
      * @return this
      */
-    public final JdbcInputAdapter bind(String id, Function<? super JdbcContext, ? extends JdbcInputDriver> provider) {
+    public final JdbcInputAdapter input(
+            String id, String profileName,
+            Function<? super JdbcContext, ? extends JdbcInputDriver> provider) {
         Arguments.requireNonNull(id);
+        Arguments.requireNonNull(profileName);
         Arguments.requireNonNull(provider);
+        checkProfileName(profileName);
         specs.add(new Spec(id, provider));
         return this;
     }
 
+    private void checkProfileName(String profileName) {
+        if (uniqueProfileName.compareAndSet(null, profileName) == false) {
+            Invariants.require(uniqueProfileName.get().equals(profileName));
+        }
+    }
+
     @Override
     public TaskSchedule getSchedule() throws IOException, InterruptedException {
-        List<Task> tasks = new ArrayList<>();
-        for (Spec spec : specs) {
-            JdbcCounterGroup counter = counterRoot.get(JdbcCounterGroup.CATEGORY_INPUT, spec.id);
-            JdbcInputDriver driver = spec.provider.apply(jdbc);
-            List<? extends Partition> partitions = driver.getPartitions();
-            for (JdbcInputDriver.Partition partition : partitions) {
-                tasks.add(new Task(partition, counter));
-            }
+        String profileName = uniqueProfileName.get();
+        if (profileName == null) {
+            // no operations
+            assert specs.isEmpty();
+            return new BasicTaskSchedule();
         }
-        return new BasicTaskSchedule(tasks);
+
+        JdbcProfile profile = jdbc.getEnvironment().getProfile(profileName);
+        try (ConnectionPool.Handle handle = profile.acquire()) {
+            List<Task> tasks = new ArrayList<>();
+            for (Spec spec : specs) {
+                JdbcCounterGroup counter = counters.get(JdbcCounterGroup.CATEGORY_INPUT, spec.id);
+                JdbcInputDriver driver = spec.provider.apply(jdbc);
+                List<? extends Partition> partitions = driver.getPartitions(handle.getConnection());
+                for (JdbcInputDriver.Partition partition : partitions) {
+                    tasks.add(new Task(profile, partition, counter));
+                }
+            }
+            return new BasicTaskSchedule(tasks);
+        }
     }
 
     @Override
@@ -137,19 +167,23 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
     private static class Task implements TaskInfo {
 
+        private final JdbcProfile profile;
+
         private final JdbcInputDriver.Partition partition;
 
         private final JdbcCounterGroup counter;
 
-        Task(Partition partition, JdbcCounterGroup counter) {
-            Arguments.requireNonNull(partition);
-            Arguments.requireNonNull(counter);
+        Task(JdbcProfile profile, JdbcInputDriver.Partition partition, JdbcCounterGroup counter) {
+            this.profile = profile;
             this.partition = partition;
             this.counter = counter;
         }
 
         Driver newDriver() throws IOException, InterruptedException {
-            return new Driver(partition.open(), counter);
+            try (Closer closer = new Closer()) {
+                Connection connection = closer.add(profile.acquire()).getConnection();
+                return new Driver(partition.open(connection), counter, closer.move());
+            }
         }
     }
 
@@ -160,12 +194,14 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
         private final JdbcCounterGroup counter;
 
+        private final Closer resource;
+
         private long count;
 
-        Driver(ObjectReader reader, JdbcCounterGroup counter) {
-            assert reader != null;
+        Driver(ObjectReader reader, JdbcCounterGroup counter, Closer resource) {
             this.reader = reader;
             this.counter = counter;
+            this.resource = resource;
         }
 
         @Override
@@ -190,9 +226,13 @@ public class JdbcInputAdapter implements InputAdapter<ExtractOperation.Input> {
 
         @Override
         public void close() throws IOException, InterruptedException {
-            reader.close();
-            counter.add(count);
-            count = 0;
+            try {
+                reader.close();
+                counter.add(count);
+                count = 0;
+            } finally {
+                resource.close();
+            }
         }
     }
 }

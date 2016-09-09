@@ -40,6 +40,7 @@ import com.asakusafw.dag.runtime.jdbc.testing.H2Resource;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Action;
+import com.asakusafw.dag.utils.common.FunctionWithException;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
 import com.asakusafw.dag.utils.common.Invariants;
@@ -292,8 +293,12 @@ public abstract class JdbcDagTestRoot {
      */
     public List<KsvModel> get(JdbcInputDriver driver) throws IOException, InterruptedException {
         List<KsvModel> results = new ArrayList<>();
-        for (JdbcInputDriver.Partition partition : driver.getPartitions()) {
-            results.addAll(get(partition));
+        try (Connection conn = h2.open()) {
+            for (JdbcInputDriver.Partition partition : driver.getPartitions(conn)) {
+                results.addAll(get(partition));
+            }
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
         }
         return results;
     }
@@ -307,10 +312,13 @@ public abstract class JdbcDagTestRoot {
      */
     public List<KsvModel> get(JdbcInputDriver.Partition partition) throws IOException, InterruptedException {
         List<KsvModel> results = new ArrayList<>();
-        try (ObjectReader reader = partition.open()) {
+        try (Connection conn = h2.open();
+                ObjectReader reader = partition.open(conn)) {
             while (reader.nextObject()) {
                 results.add(new KsvModel((KsvModel) reader.getObject()));
             }
+        } catch (SQLException e) {
+            throw JdbcUtil.wrap(e);
         }
         results.sort((a, b) -> Long.compare(a.getKey(), b.getKey()));
         return results;
@@ -348,6 +356,22 @@ public abstract class JdbcDagTestRoot {
             conn.commit();
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
+        }
+    }
+
+    /**
+     * Executes an operation with JDBC connection.
+     * @param <T> the result type
+     * @param function the operation
+     * @return the operation result
+     */
+    public <T> T connect(FunctionWithException<Connection, T, ?> function) {
+        try (Connection conn = h2.open()) {
+            T result = function.apply(conn);
+            conn.commit();
+            return result;
+        } catch (Exception e) {
+            throw new AssertionError(e);
         }
     }
 }

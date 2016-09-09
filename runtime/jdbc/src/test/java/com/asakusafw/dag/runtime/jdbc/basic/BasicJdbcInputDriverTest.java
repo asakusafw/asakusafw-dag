@@ -64,6 +64,6 @@ public class BasicJdbcInputDriverTest extends JdbcDagTestRoot {
     }
 
     private BasicJdbcInputDriver driver(JdbcProfile profile) {
-        return new BasicJdbcInputDriver(profile, SELECT, KsvJdbcAdapter::new);
+        return new BasicJdbcInputDriver(SELECT, KsvJdbcAdapter::new);
     }
 }

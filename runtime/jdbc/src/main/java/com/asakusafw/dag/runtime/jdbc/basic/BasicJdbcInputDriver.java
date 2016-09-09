@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.api.processor.ObjectReader;
 import com.asakusafw.dag.runtime.jdbc.JdbcInputDriver;
-import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.ResultSetAdapter;
 import com.asakusafw.dag.runtime.jdbc.util.JdbcUtil;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -43,58 +42,65 @@ public class BasicJdbcInputDriver implements JdbcInputDriver {
 
     static final Logger LOG = LoggerFactory.getLogger(BasicJdbcInputDriver.class);
 
-    private final JdbcProfile profile;
-
     private final String sql;
 
     private final Supplier<? extends ResultSetAdapter<?>> adapters;
 
+    private final int fetchSize;
+
     /**
      * Creates a new instance.
-     * @param profile the target JDBC profile
      * @param sql the input query
      * @param adapters the result set adapter provider
      */
-    public BasicJdbcInputDriver(
-            JdbcProfile profile,
-            String sql,
-            Supplier<? extends ResultSetAdapter<?>> adapters) {
-        Arguments.requireNonNull(profile);
+    public BasicJdbcInputDriver(String sql, Supplier<? extends ResultSetAdapter<?>> adapters) {
+        this(sql, adapters, -1);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param sql the input query
+     * @param adapters the result set adapter provider
+     * @param fetchSize the bulk fetch size, or {@code <= 0} if it is not specified
+     */
+    public BasicJdbcInputDriver(String sql, Supplier<? extends ResultSetAdapter<?>> adapters, int fetchSize) {
         Arguments.requireNonNull(sql);
         Arguments.requireNonNull(adapters);
-        this.profile = profile;
         this.sql = sql;
         this.adapters = adapters;
+        this.fetchSize = fetchSize;
     }
 
     @Override
-    public List<? extends Partition> getPartitions() {
-        return Collections.singletonList(() -> open(profile, sql, adapters.get()));
+    public List<? extends Partition> getPartitions(Connection connection) {
+        return Collections.singletonList(conn -> open(conn, sql, adapters.get(), fetchSize));
     }
 
     /**
      * Creates a new reader which returns each object of query result.
-     * @param profile the target JDBC profile
+     * @param connection the shared JDBC connection
      * @param sql the input query
      * @param adapter the result set adapter
+     * @param fetchSize the bulk fetch size, or {@code <= 0} if it is not specified
      * @return the created reader
      * @throws IOException if I/O error was occurred while computing input partitions
      * @throws InterruptedException if interrupted while computing input partitions
      */
     public static ObjectReader open(
-            JdbcProfile profile,
+            Connection connection,
             String sql,
-            ResultSetAdapter<?> adapter) throws IOException, InterruptedException {
-        Arguments.requireNonNull(profile);
+            ResultSetAdapter<?> adapter,
+            int fetchSize) throws IOException, InterruptedException {
+        Arguments.requireNonNull(connection);
         Arguments.requireNonNull(sql);
         Arguments.requireNonNull(adapter);
-        LOG.debug("JDBC input ({}): {}", profile.getName(), sql); //$NON-NLS-1$
+        Arguments.requireNonNull(fetchSize);
+        LOG.debug("JDBC input: {}", sql); //$NON-NLS-1$
         try (Closer closer = new Closer()) {
-            Connection connection = closer.add(profile.acquire()).getConnection();
             Statement statement = connection.createStatement();
             closer.add(JdbcUtil.wrap(statement::close));
-            if (profile.getFetchSize().isPresent()) {
-                statement.setFetchSize(profile.getFetchSize().getAsInt());
+            if (fetchSize > 0) {
+                statement.setFetchSize(fetchSize);
             }
             ResultSet results = statement.executeQuery(sql);
             closer.add(JdbcUtil.wrap(results::close));

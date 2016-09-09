@@ -35,7 +35,6 @@ import com.asakusafw.dag.runtime.adapter.ExtractOperation.Input;
 import com.asakusafw.dag.runtime.adapter.InputHandler;
 import com.asakusafw.dag.runtime.adapter.InputHandler.InputSession;
 import com.asakusafw.dag.runtime.jdbc.JdbcDagTestRoot;
-import com.asakusafw.dag.runtime.jdbc.JdbcProfile;
 import com.asakusafw.dag.runtime.jdbc.basic.BasicJdbcInputDriver;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvJdbcAdapter;
 import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
@@ -44,6 +43,8 @@ import com.asakusafw.dag.runtime.jdbc.testing.KsvModel;
  * Test for {@link JdbcInputAdapter}.
  */
 public class JdbcInputAdapterTest extends JdbcDagTestRoot {
+
+    private static final String PROFILE = "testing";
 
     private static final StageInfo STAGE = new StageInfo("u", "b", "f", "s", "e", Collections.emptyMap());
 
@@ -54,12 +55,12 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
     @Test
     public void simple() throws Exception {
         insert(0, null, "Hello, world!");
-        JdbcEnvironment environment = environment("testing");
+        JdbcEnvironment environment = environment(PROFILE);
         MockVertexProcessorContext vc = new MockVertexProcessorContext()
                 .withResource(StageInfo.class, STAGE)
                 .withResource(JdbcEnvironment.class, environment);
         try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
-            adapter.bind("t", driver(environment.getProfile("testing")));
+            adapter.input("t", PROFILE, driver());
             adapter.initialize();
             assertThat(collect(adapter), contains(new KsvModel(0, null, "Hello, world!")));
         }
@@ -74,12 +75,12 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
         insert(1, null, "Hello1");
         insert(2, null, "Hello2");
         insert(3, null, "Hello3");
-        JdbcEnvironment environment = environment("testing");
+        JdbcEnvironment environment = environment(PROFILE);
         MockVertexProcessorContext vc = new MockVertexProcessorContext()
                 .withResource(StageInfo.class, STAGE)
                 .withResource(JdbcEnvironment.class, environment);
         try (JdbcInputAdapter adapter = new JdbcInputAdapter(vc)) {
-            adapter.bind("t", driver(environment.getProfile("testing")));
+            adapter.input("t", PROFILE, driver());
             adapter.initialize();
             assertThat(collect(adapter), contains(
                     new KsvModel(1, null, "Hello1"),
@@ -88,8 +89,8 @@ public class JdbcInputAdapterTest extends JdbcDagTestRoot {
         }
     }
 
-    private BasicJdbcInputDriver driver(JdbcProfile profile) {
-        return new BasicJdbcInputDriver(profile, SELECT, KsvJdbcAdapter::new);
+    private BasicJdbcInputDriver driver() {
+        return new BasicJdbcInputDriver(SELECT, KsvJdbcAdapter::new);
     }
 
     private static List<KsvModel> collect(JdbcInputAdapter adapter) throws IOException, InterruptedException {

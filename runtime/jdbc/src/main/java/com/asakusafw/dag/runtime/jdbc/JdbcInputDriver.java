@@ -16,6 +16,7 @@
 package com.asakusafw.dag.runtime.jdbc;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.util.List;
 
 import com.asakusafw.dag.api.processor.ObjectReader;
@@ -29,11 +30,12 @@ public interface JdbcInputDriver {
 
     /**
      * Returns input partitions.
+     * @param connection the shared JDBC connection
      * @return the partitions to be read
      * @throws IOException if I/O error was occurred while computing input partitions
      * @throws InterruptedException if interrupted while computing input partitions
      */
-    List<? extends Partition> getPartitions() throws IOException, InterruptedException;
+    List<? extends Partition> getPartitions(Connection connection) throws IOException, InterruptedException;
 
     /**
      * Represents a partition of JDBC input.
@@ -44,10 +46,11 @@ public interface JdbcInputDriver {
 
         /**
          * Creates a new reader which returns each object in the target partition.
+         * @param connection the shared JDBC connection
          * @return the created reader
          * @throws IOException if I/O error was occurred while computing input partitions
          * @throws InterruptedException if interrupted while computing input partitions
          */
-        ObjectReader open() throws IOException, InterruptedException;
+        ObjectReader open(Connection connection) throws IOException, InterruptedException;
     }
 }

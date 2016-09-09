@@ -120,7 +120,8 @@ public final class WindGateJdbcDirect {
             Supplier<? extends ResultSetAdapter<?>> adapters,
             Set<String> options) {
         String query = buildSelectStatement(profile, tableName, columnNames, cond, options);
-        return new BasicJdbcInputDriver(profile, query, adapters);
+        int fetchSize = profile.getFetchSize().orElse(-1);
+        return new BasicJdbcInputDriver(query, adapters, fetchSize);
     }
 
     private static JdbcInputDriver buildSplitInput(

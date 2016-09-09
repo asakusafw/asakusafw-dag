@@ -187,7 +187,7 @@ public class JdbcOutputProcessor implements VertexProcessor {
         this.maxConcurrency = profile.getMaxOutputConcurrency()
                 .orElse(DEFAULT_MAX_CONCURRENCY);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("JDBC shared output concurrency: {}", maxConcurrency);
+            LOG.debug("JDBC output concurrency: {}", maxConcurrency);
         }
     }
 

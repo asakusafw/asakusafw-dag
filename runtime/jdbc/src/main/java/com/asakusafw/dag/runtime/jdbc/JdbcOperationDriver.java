@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.sql.Connection;
 
 /**
- * Processes operations via JDBC with using shared connections.
+ * Processes operations via JDBC.
  * @since 0.2.0
  */
 @FunctionalInterface

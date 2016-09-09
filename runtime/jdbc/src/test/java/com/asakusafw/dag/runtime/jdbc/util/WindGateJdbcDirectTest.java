@@ -108,7 +108,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
             JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .withOption(WindGateJdbcDirect.OPTIMIAZATION_CORE_SPLIT_PREFIX + "M_KEY")
                     .build(c);
-            List<List<KsvModel>> parts = driver.getPartitions().stream()
+            List<List<KsvModel>> parts = connect(driver::getPartitions).stream()
                     .map(p -> Lang.safe(() -> get(p)))
                     .collect(Collectors.toList());
             assertThat(parts, hasSize(10));
@@ -135,7 +135,7 @@ public class WindGateJdbcDirectTest extends JdbcDagTestRoot {
             JdbcInputDriver driver = WindGateJdbcDirect.input("testing", TABLE, COLUMNS, KsvJdbcAdapter::new)
                     .withOption(WindGateJdbcDirect.OPTIMIAZATION_CORE_SPLIT_PREFIX + "M_KEY")
                     .build(c);
-            List<List<KsvModel>> parts = driver.getPartitions().stream()
+            List<List<KsvModel>> parts = connect(driver::getPartitions).stream()
                     .map(p -> Lang.safe(() -> get(p)))
                     .collect(Collectors.toList());
             assertThat(parts, hasSize(1));
