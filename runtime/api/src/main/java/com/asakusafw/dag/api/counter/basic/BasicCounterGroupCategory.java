@@ -39,24 +39,24 @@ public class BasicCounterGroupCategory<T extends CounterGroup> implements Counte
 
     /**
      * Creates a new instance.
-     * @param description the description
+     * @param description the description of the target {@link CounterGroup}
      * @param scope the scope of the target {@link CounterGroup}
-     * @param columns the description of the target {@link CounterGroup}
-     * @param supplier the set available columns in the target {@link CounterGroup}
+     * @param columns the available columns in the {@link CounterGroup}
+     * @param provider a supplier which provides the target {@link CounterGroup}
      */
     public BasicCounterGroupCategory(
             String description,
             Scope scope,
             List<? extends CounterGroup.Column> columns,
-            Supplier<? extends T> supplier) {
+            Supplier<? extends T> provider) {
         Arguments.requireNonNull(description);
         Arguments.requireNonNull(scope);
         Arguments.requireNonNull(columns);
-        Arguments.requireNonNull(supplier);
+        Arguments.requireNonNull(provider);
         this.description = description;
         this.scope = scope;
         this.columns = Arguments.freeze(columns);
-        this.supplier = supplier;
+        this.supplier = provider;
     }
 
     @Override

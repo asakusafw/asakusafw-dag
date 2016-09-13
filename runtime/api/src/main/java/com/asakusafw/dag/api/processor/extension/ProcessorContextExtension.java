@@ -25,11 +25,11 @@ import com.asakusafw.dag.api.processor.ProcessorContext;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
 import com.asakusafw.dag.utils.common.InterruptibleIo.Closer;
-import com.asakusafw.dag.utils.common.InterruptibleIo.Initializer;
 
 /**
  * An extension point for {@link ProcessorContext}.
  */
+@FunctionalInterface
 public interface ProcessorContextExtension {
 
     /**
@@ -78,14 +78,14 @@ public interface ProcessorContextExtension {
         public InterruptibleIo install(
                 ProcessorContext context,
                 ProcessorContext.Editor editor) throws IOException, InterruptedException {
-            try (Initializer<Closer> initializer = new Initializer<>(new Closer())) {
+            try (Closer closer = new Closer()) {
                 for (ProcessorContextExtension extension : elements) {
                     InterruptibleIo result = extension.install(context, editor);
                     if (result != null) {
-                        initializer.get().add(result);
+                        closer.add(result);
                     }
                 }
-                return initializer.done();
+                return closer.move();
             }
         }
     }

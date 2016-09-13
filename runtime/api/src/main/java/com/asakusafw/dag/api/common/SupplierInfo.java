@@ -25,6 +25,7 @@ import com.asakusafw.dag.utils.common.Invariants;
 /**
  * Represents {@link Supplier} reference.
  */
+@FunctionalInterface
 public interface SupplierInfo extends Serializable {
 
     /**
@@ -68,7 +69,7 @@ public interface SupplierInfo extends Serializable {
             if (Supplier.class.isAssignableFrom(aClass)) {
                 return Invariants.safe(() -> (Supplier<?>) aClass.newInstance());
             } else {
-                return () -> Invariants.safe(() -> aClass.newInstance());
+                return () -> Invariants.safe(aClass::newInstance);
             }
         }
 

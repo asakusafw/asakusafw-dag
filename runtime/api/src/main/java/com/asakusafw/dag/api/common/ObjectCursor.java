@@ -16,9 +16,12 @@
 package com.asakusafw.dag.api.common;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 /**
  * An abstract super interface of providing objects.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public interface ObjectCursor {
 
@@ -40,4 +43,32 @@ public interface ObjectCursor {
      * @see #nextObject()
      */
     Object getObject() throws IOException, InterruptedException;
+
+    /**
+     * Consumes all objects in this cursor.
+     * @param consumer the consumer
+     * @throws IOException if I/O error was occurred while consuming objects
+     * @throws InterruptedException if interrupted while consuming objects
+     * @since 0.2.0
+     */
+    default void forEach(Consumer<Object> consumer) throws IOException, InterruptedException {
+        while (nextObject()) {
+            consumer.accept(getObject());
+        }
+    }
+
+    /**
+     * Consumes all objects in this cursor.
+     * @param <T> the object type
+     * @param type the object type
+     * @param consumer the consumer
+     * @throws IOException if I/O error was occurred while consuming objects
+     * @throws InterruptedException if interrupted while consuming objects
+     * @since 0.2.0
+     */
+    default <T> void forEach(Class<T> type, Consumer<? super T> consumer) throws IOException, InterruptedException {
+        while (nextObject()) {
+            consumer.accept(type.cast(getObject()));
+        }
+    }
 }

@@ -22,6 +22,8 @@ import com.asakusafw.dag.utils.common.Optionals;
 
 /**
  * Processes vertex operations on Asakusa DAG.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 @FunctionalInterface
 public interface VertexProcessor extends Processor {
@@ -39,6 +41,15 @@ public interface VertexProcessor extends Processor {
     default Optional<? extends TaskSchedule> initialize(
             VertexProcessorContext context) throws IOException, InterruptedException {
         return Optionals.empty();
+    }
+
+    /**
+     * Returns the number of max concurrency.
+     * @return the number of max concurrency, or {@code -1} if it is not defined
+     * @since 0.2.0
+     */
+    default int getMaxConcurrency() {
+        return -1;
     }
 
     /**

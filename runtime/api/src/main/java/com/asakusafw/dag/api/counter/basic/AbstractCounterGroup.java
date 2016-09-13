@@ -19,7 +19,7 @@ import java.text.MessageFormat;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import com.asakusafw.dag.api.counter.CounterGroup;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -29,16 +29,16 @@ import com.asakusafw.dag.utils.common.Arguments;
  */
 public abstract class AbstractCounterGroup implements CounterGroup {
 
-    private final ConcurrentMap<CounterGroup.Column, AtomicLong> counters = new ConcurrentHashMap<>();
+    private final ConcurrentMap<CounterGroup.Column, LongAdder> counters = new ConcurrentHashMap<>();
 
     /**
      * Registers a column and returns the new counter entity for the column.
      * @param column the target column
      * @return the created counter entity
      */
-    public final AtomicLong register(CounterGroup.Column column) {
+    public final LongAdder register(CounterGroup.Column column) {
         Arguments.requireNonNull(column);
-        AtomicLong counter = new AtomicLong();
+        LongAdder counter = new LongAdder();
         if (counters.putIfAbsent(column, counter) == null) {
             return counter;
         } else {
@@ -51,11 +51,11 @@ public abstract class AbstractCounterGroup implements CounterGroup {
     @Override
     public long getCount(Column column) {
         Arguments.requireNonNull(column);
-        AtomicLong counter = counters.get(column);
+        LongAdder counter = counters.get(column);
         if (counter == null) {
             throw new NoSuchElementException(column.toString());
         }
-        return counter.get();
+        return counter.sum();
     }
 
     @Override

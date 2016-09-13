@@ -37,6 +37,8 @@ public final class SupplierGenerator {
 
     private static final String CATEGORY = "util"; //$NON-NLS-1$
 
+    private static final String SUFFIX = "Supplier"; //$NON-NLS-1$
+
     private SupplierGenerator() {
         return;
     }
@@ -61,7 +63,7 @@ public final class SupplierGenerator {
      */
     public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
         return context.cache(new Key(type), () -> {
-            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "Supplier")); //$NON-NLS-1$
+            ClassDescription target = context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(type, SUFFIX));
             return generate0(type, target);
         });
     }

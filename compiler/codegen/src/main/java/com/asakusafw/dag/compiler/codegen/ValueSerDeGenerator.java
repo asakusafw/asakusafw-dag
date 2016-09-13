@@ -49,6 +49,8 @@ public final class ValueSerDeGenerator {
 
     private static final String CATEGORY = "serde"; //$NON-NLS-1$
 
+    private static final String SUFFIX = "SerDe"; //$NON-NLS-1$
+
     private ValueSerDeGenerator() {
         return;
     }
@@ -74,7 +76,7 @@ public final class ValueSerDeGenerator {
     public static ClassData generate(ClassGeneratorContext context, TypeDescription type) {
         return context.cache(new Key(type), () -> {
             DataModelReference ref = context.getDataModelLoader().load(type);
-            ClassDescription target = context.getClassName(CATEGORY, Util.getSimpleNameHint(type, "SerDe")); //$NON-NLS-1$
+            ClassDescription target = context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(type, SUFFIX));
             return generate0(ref, target);
         });
     }

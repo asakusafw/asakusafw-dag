@@ -27,11 +27,12 @@ import com.asakusafw.dag.api.model.PortInfo;
 import com.asakusafw.dag.api.model.VertexInfo;
 import com.asakusafw.dag.utils.common.Arguments;
 import com.asakusafw.dag.utils.common.Invariants;
-import com.asakusafw.dag.utils.common.Optionals;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 
 /**
  * Builds {@link GraphInfo}.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class GraphInfoBuilder {
 
@@ -44,16 +45,23 @@ public class GraphInfoBuilder {
 
     private final Map<SubPlan, ResolvedVertexInfo> vertexMap = new LinkedHashMap<>();
 
+    private final Map<SubPlan.Input, ResolvedInputInfo> inputMap = new LinkedHashMap<>();
+
+    private final Map<SubPlan.Output, ResolvedOutputInfo> outputMap = new LinkedHashMap<>();
+
     /**
      * Adds a vertex.
      * @param vertex the target vertex
      */
     public void add(ResolvedVertexInfo vertex) {
         Arguments.requireNonNull(vertex);
-
         String id = vertex.getId();
         Invariants.require(vertices.containsKey(id) == false, id);
+        Invariants.require(vertex.getInputs().keySet().stream().noneMatch(inputMap::containsKey));
+        Invariants.require(vertex.getOutputs().keySet().stream().noneMatch(outputMap::containsKey));
         vertices.put(id, vertex);
+        inputMap.putAll(vertex.getInputs());
+        outputMap.putAll(vertex.getOutputs());
     }
 
     /**
@@ -67,6 +75,17 @@ public class GraphInfoBuilder {
         Invariants.require(vertexMap.containsKey(member) == false, () -> member);
         add(vertex);
         vertexMap.put(member, vertex);
+    }
+
+    /**
+     * Returns a vertex which has the target ID.
+     * @param id the vertex ID
+     * @return the related vertex, or {@code null} if it is not defined
+     * @since 0.2.0
+     */
+    public ResolvedVertexInfo get(String id) {
+        Arguments.requireNonNull(id);
+        return vertices.get(id);
     }
 
     /**
@@ -85,9 +104,7 @@ public class GraphInfoBuilder {
      * @return the related input
      */
     public ResolvedInputInfo get(SubPlan.Input port) {
-        return Optionals.of(get(port.getOwner()))
-                .flatMap(v -> Optionals.get(v.getInputs(), port))
-                .orElse(null);
+        return inputMap.get(port);
     }
 
     /**
@@ -96,9 +113,7 @@ public class GraphInfoBuilder {
      * @return the related output
      */
     public ResolvedOutputInfo get(SubPlan.Output port) {
-        return Optionals.of(get(port.getOwner()))
-                .flatMap(v -> Optionals.get(v.getOutputs(), port))
-                .orElse(null);
+        return outputMap.get(port);
     }
 
     /**
@@ -115,10 +130,14 @@ public class GraphInfoBuilder {
             VertexInfo v = info.addVertex(s.getId(), s.getDescriptor());
             vs.put(s, v);
             for (ResolvedOutputInfo p : s.getOutputs().values()) {
-                os.put(p, v.addOutputPort(p.getId()));
+                if (os.containsKey(p) == false) {
+                    os.put(p, v.addOutputPort(p.getId(), p.getTag()));
+                }
             }
             for (ResolvedInputInfo p : s.getInputs().values()) {
-                is.put(p, v.addInputPort(p.getId()));
+                if (is.containsKey(p) == false) {
+                    is.put(p, v.addInputPort(p.getId(), p.getTag()));
+                }
             }
         }
         connectImplicitDependencies(info, vs, voidEdge);
@@ -126,7 +145,7 @@ public class GraphInfoBuilder {
         return info;
     }
 
-    private void connectEdges(GraphInfo info,
+    private static void connectEdges(GraphInfo info,
             Map<ResolvedInputInfo, PortInfo> is, Map<ResolvedOutputInfo, PortInfo> os) {
         for (Map.Entry<ResolvedOutputInfo, PortInfo> entry : os.entrySet()) {
             Set<ResolvedInputInfo> targets = entry.getKey().getDownstreams();
@@ -145,7 +164,7 @@ public class GraphInfoBuilder {
         }
     }
 
-    private void connectImplicitDependencies(GraphInfo info,
+    private static void connectImplicitDependencies(GraphInfo info,
             Map<ResolvedVertexInfo, VertexInfo> vs,
             Supplier<? extends EdgeDescriptor> voidEdge) {
         Set<ResolvedVertexInfo> targets = vs.keySet().stream()

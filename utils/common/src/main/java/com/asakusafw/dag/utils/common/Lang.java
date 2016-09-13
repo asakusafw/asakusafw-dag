@@ -19,10 +19,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -111,6 +113,24 @@ public final class Lang {
     }
 
     /**
+     * Applies the {@code value} to function, and returns the applied result.
+     * @param <T> the argument type
+     * @param <R> the result type
+     * @param <E> the throwable exception type
+     * @param value the value
+     * @param function the function to apply
+     * @return the function result
+     * @throws E if an exception was occurred while applying the function
+     * @since 0.2.0
+     */
+    public static <T, R, E extends Exception> R with(
+            T value,
+            FunctionWithException<? super T, ? extends R, E> function) throws E {
+        Objects.requireNonNull(function);
+        return function.apply(value);
+    }
+
+    /**
      * Executes a {@link CallableWithException}.
      * @param <T> the result type
      * @param <E> the throwable exception type
@@ -186,6 +206,47 @@ public final class Lang {
     }
 
     /**
+     * Iterates elements over the {@code optional}.
+     * @param <T> the element type
+     * @param <E> the throwable exception type
+     * @param optional the target optional
+     * @param action the action for each element
+     * @throws E if an exception was occurred
+     * @since 0.2.0
+     */
+    public static <T, E extends Exception> void forEach(
+            Optional<T> optional,
+            Action<? super T, ? extends E> action) throws E {
+        Objects.requireNonNull(optional);
+        Objects.requireNonNull(action);
+        if (optional.isPresent()) {
+            action.perform(optional.get());
+        }
+    }
+
+    /**
+     * Iterates elements.
+     * @param <T> the element type
+     * @param <E> the throwable exception type
+     * @param seed the seed element
+     * @param condition the iterate condition
+     * @param next the next element generator
+     * @param action the action for each element
+     * @throws E if an exception was occurred
+     * @since 0.2.0
+     */
+    public static <T, E extends Exception> void forEach(
+            T seed, Predicate<? super T> condition, Function<? super T, ? extends T> next,
+            Action<? super T, ? extends E> action) throws E {
+        Objects.requireNonNull(condition);
+        Objects.requireNonNull(next);
+        Objects.requireNonNull(action);
+        for (T v = seed; condition.test(v); v = next.apply(v)) {
+            action.perform(v);
+        }
+    }
+
+    /**
      * Returns a projection of the collection.
      * @param <TInput> the input element type
      * @param <TOutput> the output element type
@@ -242,5 +303,72 @@ public final class Lang {
         if (type.isInstance(throwable)) {
             throw type.cast(throwable);
         }
+    }
+
+    /**
+     * Returns hash code of the set of values.
+     * @param values the values
+     * @return the hash code
+     * @since 0.2.0
+     */
+    public static int hashCode(Object... values) {
+        return Objects.hash(values);
+    }
+
+    /**
+     * Returns whether or not the two objects are equivalent.
+     * @param <T> the object type
+     * @param a the first object
+     * @param b the second object
+     * @param properties the properties
+     * @return {@code true} if the two objects are equivalent, otherwise {@code false}
+     * @since 0.2.0
+     */
+    @SafeVarargs
+    public static <T> boolean equals(T a, Object b, Function<? super T, ?>... properties) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null || a.getClass() != b.getClass()) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        T safeB = (T) b;
+        for (Function<? super T, ?> property : properties) {
+            Object pa = property.apply(a);
+            Object pb = property.apply(safeB);
+            if (!Objects.equals(pa, pb)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns whether or not the two objects are equivalent.
+     * @param <T> the object type
+     * @param a the first object
+     * @param b the second object
+     * @param properties the properties
+     * @return {@code true} if the two objects are equivalent, otherwise {@code false}
+     * @since 0.2.0
+     */
+    public static <T> boolean equals(T a, Object b, List<? extends Function<? super T, ?>> properties) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null || a.getClass() != b.getClass()) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        T safeB = (T) b;
+        for (Function<? super T, ?> property : properties) {
+            Object pa = property.apply(a);
+            Object pb = property.apply(safeB);
+            if (!Objects.equals(pa, pb)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

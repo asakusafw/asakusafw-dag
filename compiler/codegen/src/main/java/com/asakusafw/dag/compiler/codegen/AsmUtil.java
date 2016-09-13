@@ -16,6 +16,8 @@
 package com.asakusafw.dag.compiler.codegen;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -349,6 +351,29 @@ public final class AsmUtil {
             getConst(method, values[index]);
             method.visitInsn(Opcodes.AASTORE);
         }
+    }
+
+    /**
+     * Adds a value list on to the top of the stack.
+     * @param method the current method visitor
+     * @param values the array elements
+     * @since 0.2.0
+     */
+    public static void getList(MethodVisitor method, Collection<?> values) {
+        getInt(method, values.size());
+        method.visitTypeInsn(Opcodes.ANEWARRAY, typeOf(Object.class).getInternalName());
+        int index = 0;
+        for (Object value : values) {
+            method.visitInsn(Opcodes.DUP);
+            getInt(method, index++);
+            getConst(method, value);
+            method.visitInsn(Opcodes.AASTORE);
+        }
+        method.visitMethodInsn(Opcodes.INVOKESTATIC,
+                typeOf(Arrays.class).getInternalName(),
+                "asList",
+                Type.getMethodDescriptor(typeOf(List.class), typeOf(Object[].class)),
+                false);
     }
 
     /**

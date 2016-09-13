@@ -33,6 +33,13 @@ public class BasicTaskSchedule implements TaskSchedule {
     private final List<TaskInfo> tasks;
 
     /**
+     * Creates a new empty instance.
+     */
+    public BasicTaskSchedule() {
+        this(Collections.emptyList());
+    }
+
+    /**
      * Creates a new instance.
      * @param tasks each task information
      */

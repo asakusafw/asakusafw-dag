@@ -18,7 +18,6 @@ package com.asakusafw.dag.compiler.codegen;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
@@ -32,7 +31,6 @@ import com.asakusafw.dag.api.processor.testing.VertexProcessorRunner;
 import com.asakusafw.dag.runtime.adapter.DataTable;
 import com.asakusafw.dag.runtime.adapter.DataTableAdapter;
 import com.asakusafw.dag.runtime.adapter.ExtractOperation;
-import com.asakusafw.dag.runtime.adapter.ExtractOperation.Input;
 import com.asakusafw.dag.runtime.adapter.Operation;
 import com.asakusafw.dag.runtime.adapter.OperationAdapter;
 import com.asakusafw.dag.runtime.skeleton.EdgeOutputAdapter;
@@ -114,12 +112,9 @@ public class VertexAdapterGeneratorTest extends ClassGeneratorTestRoot {
             DataTable<String> table = context.getDataTable(String.class, "table");
             assertThat(table.getList(table.newKeyBuffer()), contains("Hello, table!"));
             Result<String> sink = context.getSink(String.class, "out");
-            return new Operation<ExtractOperation.Input>() {
-                @Override
-                public void process(Input input) throws IOException, InterruptedException {
-                    String in = input.getObject();
-                    sink.add(in + "!");
-                }
+            return input -> {
+                String in = input.getObject();
+                sink.add(in + "!");
             };
         }
     }

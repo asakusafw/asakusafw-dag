@@ -22,10 +22,14 @@ import com.asakusafw.dag.utils.common.Arguments;
 
 /**
  * Represents a resolved output.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class ResolvedOutputInfo {
 
     private final String id;
+
+    private final String tag;
 
     private final Set<ResolvedInputInfo> downstreams;
 
@@ -35,9 +39,21 @@ public class ResolvedOutputInfo {
      * @param downstreams the downstream inputs
      */
     public ResolvedOutputInfo(String id, Collection<? extends ResolvedInputInfo> downstreams) {
+        this(id, null, downstreams);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param id the output ID
+     * @param tag the optional port tag (nullable)
+     * @param downstreams the downstream inputs
+     * @since 0.2.0
+     */
+    public ResolvedOutputInfo(String id, String tag, Collection<? extends ResolvedInputInfo> downstreams) {
         Arguments.requireNonNull(id);
         Arguments.requireNonNull(downstreams);
         this.id = id;
+        this.tag = tag;
         this.downstreams = Arguments.freezeToSet(downstreams);
     }
 
@@ -47,6 +63,15 @@ public class ResolvedOutputInfo {
      */
     public String getId() {
         return id;
+    }
+
+    /**
+     * Returns the tag.
+     * @return the tag, or {@code null} if it is not defined
+     * @since 0.2.0
+     */
+    public String getTag() {
+        return tag;
     }
 
     /**

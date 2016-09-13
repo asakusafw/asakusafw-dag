@@ -48,6 +48,8 @@ public final class BufferOperatorGenerator {
 
     private static final String CATEGORY = "buffer"; //$NON-NLS-1$
 
+    private static final String SUFFIX = "Buffer"; //$NON-NLS-1$
+
     private BufferOperatorGenerator() {
         return;
     }
@@ -73,8 +75,7 @@ public final class BufferOperatorGenerator {
     public static ClassData generate(ClassGeneratorContext context, List<? extends VertexElement> successors) {
         TypeDescription type = getDataType(successors);
         return context.cache(new Key(type, successors.size()), () -> {
-            String hint = Util.getSimpleNameHint(type, "Buffer"); //$NON-NLS-1$
-            return generate0(successors, context.getClassName(CATEGORY, hint));
+            return generate0(successors, context.getClassName(CATEGORY, NameUtil.getSimpleNameHint(type, SUFFIX)));
         });
     }
 

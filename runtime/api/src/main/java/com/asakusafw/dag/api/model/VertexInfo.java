@@ -26,10 +26,12 @@ import com.asakusafw.dag.utils.common.Arguments;
 
 /**
  * Describes behavior or vertices.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class VertexInfo implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final VertexId id;
 
@@ -81,8 +83,19 @@ public class VertexInfo implements Serializable {
      * @return the added port
      */
     public PortInfo addInputPort(String name) {
+        return addInputPort(name, null);
+    }
+
+    /**
+     * Adds a new input port to this vertex.
+     * @param name the port name
+     * @param tag the optional port tag (nullable)
+     * @return the added port
+     * @since 0.2.0
+     */
+    public PortInfo addInputPort(String name, String tag) {
         Arguments.requireNonNull(name);
-        return addPort(inputs, name, PortInfo.Direction.INPUT);
+        return addPort(inputs, name, PortInfo.Direction.INPUT, tag);
     }
 
     /**
@@ -91,11 +104,22 @@ public class VertexInfo implements Serializable {
      * @return the added port
      */
     public PortInfo addOutputPort(String name) {
-        Arguments.requireNonNull(name);
-        return addPort(outputs, name, PortInfo.Direction.OUTPUT);
+        return addOutputPort(name, null);
     }
 
-    private PortInfo addPort(List<PortInfo> target, String name, PortInfo.Direction direction) {
+    /**
+     * Adds a new output port to this vertex.
+     * @param name the port name
+     * @param tag the optional port tag (nullable)
+     * @return the added port
+     * @since 0.2.0
+     */
+    public PortInfo addOutputPort(String name, String tag) {
+        Arguments.requireNonNull(name);
+        return addPort(outputs, name, PortInfo.Direction.OUTPUT, tag);
+    }
+
+    private PortInfo addPort(List<PortInfo> target, String name, PortInfo.Direction direction, String tag) {
         if (target.stream().anyMatch(o -> o.getName().equals(name))) {
             throw new IllegalStateException(MessageFormat.format(
                     "duplicate port: {1}:{2} ({0})", //$NON-NLS-1$
@@ -103,7 +127,7 @@ public class VertexInfo implements Serializable {
                     name,
                     direction));
         }
-        PortInfo info = new PortInfo(new PortId(id, name, direction));
+        PortInfo info = new PortInfo(new PortId(id, name, direction), tag);
         target.add(info);
         return info;
     }

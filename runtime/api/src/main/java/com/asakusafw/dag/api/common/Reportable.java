@@ -20,6 +20,7 @@ import java.io.IOException;
 /**
  * Represents a reporter.
  */
+@FunctionalInterface
 public interface Reportable {
 
     /**

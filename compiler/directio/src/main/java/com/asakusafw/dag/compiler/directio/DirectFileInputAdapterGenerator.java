@@ -60,6 +60,7 @@ public class DirectFileInputAdapterGenerator {
                     false);
             v.visitInsn(Opcodes.POP);
         });
+        writer.visitEnd();
         return new ClassData(target, writer::toByteArray);
     }
 

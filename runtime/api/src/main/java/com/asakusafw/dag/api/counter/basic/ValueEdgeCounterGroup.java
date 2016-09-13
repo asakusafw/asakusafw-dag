@@ -15,7 +15,7 @@
  */
 package com.asakusafw.dag.api.counter.basic;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import com.asakusafw.dag.api.counter.CounterGroup;
 import com.asakusafw.dag.utils.common.Arguments;
@@ -25,9 +25,9 @@ import com.asakusafw.dag.utils.common.Arguments;
  */
 public class ValueEdgeCounterGroup extends AbstractCounterGroup {
 
-    private final AtomicLong dataSize;
+    private final LongAdder dataSize;
 
-    private final AtomicLong recordCount;
+    private final LongAdder recordCount;
 
     /**
      * Creates a new instance.
@@ -46,7 +46,7 @@ public class ValueEdgeCounterGroup extends AbstractCounterGroup {
      * @param count the data size in bytes
      */
     public final void addDataSize(long count) {
-        dataSize.addAndGet(count);
+        dataSize.add(count);
     }
 
     /**
@@ -54,6 +54,6 @@ public class ValueEdgeCounterGroup extends AbstractCounterGroup {
      * @param count the number of records
      */
     public final void addRecordCount(long count) {
-        recordCount.addAndGet(count);
+        recordCount.add(count);
     }
 }

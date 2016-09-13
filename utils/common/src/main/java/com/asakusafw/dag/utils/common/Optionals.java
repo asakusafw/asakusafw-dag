@@ -15,7 +15,6 @@
  */
 package com.asakusafw.dag.utils.common;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -68,7 +67,7 @@ public final class Optionals {
         if (valueOrNull == null) {
             return Stream.empty();
         } else {
-            return Collections.singleton(valueOrNull).stream();
+            return Stream.of(valueOrNull);
         }
     }
 

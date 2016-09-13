@@ -15,12 +15,15 @@
  */
 package com.asakusafw.dag.utils.common;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
  * Represents a tuple.
  * @param <TLeft> the left value type
  * @param <TRight> the right value type
+ * @since 0.1.0
+ * @version 0.2.0
  */
 public class Tuple<TLeft, TRight> {
 
@@ -36,6 +39,19 @@ public class Tuple<TLeft, TRight> {
     public Tuple(TLeft left, TRight right) {
         this.left = left;
         this.right = right;
+    }
+
+    /**
+     * Creates a new instance from map entry.
+     * @param entry the map entry
+     * @param <TLeft> the left value type
+     * @param <TRight> the right value type
+     * @return the created instance
+     * @since 0.2.0
+     */
+    public static <TLeft, TRight> Tuple<TLeft, TRight> of(Map.Entry<? extends TLeft, ? extends TRight> entry) {
+        Arguments.requireNonNull(entry);
+        return new Tuple<>(entry.getKey(), entry.getValue());
     }
 
     /**

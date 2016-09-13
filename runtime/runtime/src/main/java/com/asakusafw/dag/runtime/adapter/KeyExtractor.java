@@ -19,6 +19,7 @@ package com.asakusafw.dag.runtime.adapter;
  * Extracts keys from data.
  * @param <T> the data type
  */
+@FunctionalInterface
 public interface KeyExtractor<T> {
 
     /**

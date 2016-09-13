@@ -213,8 +213,8 @@ public class VertexAdapter implements VertexProcessor {
             Consumer<? super T> target,
             VertexProcessorContext context) throws IOException, InterruptedException {
         Function<VertexProcessorContext, ? extends T> f = Invariants.requireNonNull(factory.get());
-        T adapter = f.apply(context);
-        target.accept(closer.add(adapter));
+        T adapter = closer.add(f.apply(context));
+        target.accept(adapter);
         adapter.initialize();
     }
 
@@ -223,8 +223,8 @@ public class VertexAdapter implements VertexProcessor {
             Consumer<? super T> target,
             VertexProcessorContext context) throws IOException, InterruptedException {
         for (Function<VertexProcessorContext, ? extends T> factory : factories) {
-            T adapter = factory.apply(context);
-            target.accept(closer.add(adapter));
+            T adapter = closer.add(factory.apply(context));
+            target.accept(adapter);
             adapter.initialize();
         }
     }

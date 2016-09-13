@@ -13,25 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.dag.compiler.codegen;
+package com.asakusafw.dag.runtime.skeleton;
 
-import java.util.Optional;
+import java.io.IOException;
 
-import com.asakusafw.lang.compiler.model.description.ClassDescription;
-import com.asakusafw.lang.compiler.model.description.TypeDescription;
+import com.asakusafw.dag.api.processor.TaskProcessor;
+import com.asakusafw.dag.api.processor.TaskProcessorContext;
 
-final class Util {
+/**
+ * A {@link TaskProcessor} which does nothing.
+ * @since 0.2.0
+ */
+public class VoidTaskProcessor implements TaskProcessor {
 
-    private Util() {
+    /**
+     * A instance of this class.
+     */
+    public static final TaskProcessor INSTANCE = new VoidTaskProcessor();
+
+    @Override
+    public void run(TaskProcessorContext context) throws IOException, InterruptedException {
         return;
     }
 
-    static String getSimpleNameHint(TypeDescription type, String suffix) {
-        return Optional.of(type)
-                .filter(ClassDescription.class::isInstance)
-                .map(ClassDescription.class::cast)
-                .map(ClassDescription::getSimpleName)
-                .map(s -> s + suffix)
-                .orElse(null);
+    @Override
+    public String toString() {
+        return "no-operations"; //$NON-NLS-1$
     }
 }

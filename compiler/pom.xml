@@ -19,5 +19,6 @@
     <module>builtin</module>
     <module>internalio</module>
     <module>directio</module>
+    <module>jdbc</module>
   </modules>
 </project>
