@@ -17,6 +17,7 @@ package com.asakusafw.dag.runtime.io;
 
 import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertThat;
 
 import java.io.DataOutput;
 import java.io.File;
@@ -155,14 +156,14 @@ public class SerDeNativeTest {
     public void compare_boolean() throws Exception {
         Comparator<BooleanOption> cmp = comparator(MAPPER::jna_compare_boolean);
 
-        assertThat(cmp.compare(new BooleanOption(false), new BooleanOption(false)), is(0));
-        assertThat(cmp.compare(new BooleanOption(true), new BooleanOption(true)), is(0));
-        assertThat(cmp.compare(new BooleanOption(true), new BooleanOption(false)), greaterThan(0));
-        assertThat(cmp.compare(new BooleanOption(false), new BooleanOption(true)), lessThan(0));
+        compare(cmp, new BooleanOption(false), new BooleanOption(false));
+        compare(cmp, new BooleanOption(true), new BooleanOption(true));
+        compare(cmp, new BooleanOption(true), new BooleanOption(false));
+        compare(cmp, new BooleanOption(false), new BooleanOption(true));
 
-        assertThat(cmp.compare(new BooleanOption(), new BooleanOption()), is(0));
-        assertThat(cmp.compare(new BooleanOption(false), new BooleanOption()), greaterThan(0));
-        assertThat(cmp.compare(new BooleanOption(), new BooleanOption(false)), lessThan(0));
+        compare(cmp, new BooleanOption(), new BooleanOption());
+        compare(cmp, new BooleanOption(false), new BooleanOption());
+        compare(cmp, new BooleanOption(), new BooleanOption(false));
     }
 
     /**
@@ -173,13 +174,13 @@ public class SerDeNativeTest {
     public void compare_byte() throws Exception {
         Comparator<ByteOption> cmp = comparator(MAPPER::jna_compare_byte);
 
-        assertThat(cmp.compare(new ByteOption((byte) 0), new ByteOption((byte) 0)), is(0));
-        assertThat(cmp.compare(new ByteOption((byte) 1), new ByteOption((byte) 0)), greaterThan(0));
-        assertThat(cmp.compare(new ByteOption((byte) 0), new ByteOption((byte) 1)), lessThan(0));
+        compare(cmp, new ByteOption((byte) 0), new ByteOption((byte) 0));
+        compare(cmp, new ByteOption((byte) 1), new ByteOption((byte) 0));
+        compare(cmp, new ByteOption((byte) 0), new ByteOption((byte) 1));
 
-        assertThat(cmp.compare(new ByteOption(), new ByteOption()), is(0));
-        assertThat(cmp.compare(new ByteOption((byte) -1), new ByteOption()), greaterThan(0));
-        assertThat(cmp.compare(new ByteOption(), new ByteOption((byte) -1)), lessThan(0));
+        compare(cmp, new ByteOption(), new ByteOption());
+        compare(cmp, new ByteOption((byte) -1), new ByteOption());
+        compare(cmp, new ByteOption(), new ByteOption((byte) -1));
     }
 
     /**
@@ -190,13 +191,13 @@ public class SerDeNativeTest {
     public void compare_short() throws Exception {
         Comparator<ShortOption> cmp = comparator(MAPPER::jna_compare_short);
 
-        assertThat(cmp.compare(new ShortOption((short) 0), new ShortOption((short) 0)), is(0));
-        assertThat(cmp.compare(new ShortOption((short) 1), new ShortOption((short) 0)), greaterThan(0));
-        assertThat(cmp.compare(new ShortOption((short) 0), new ShortOption((short) 1)), lessThan(0));
+        compare(cmp, new ShortOption((short) 0), new ShortOption((short) 0));
+        compare(cmp, new ShortOption((short) 1), new ShortOption((short) 0));
+        compare(cmp, new ShortOption((short) 0), new ShortOption((short) 1));
 
-        assertThat(cmp.compare(new ShortOption(), new ShortOption()), is(0));
-        assertThat(cmp.compare(new ShortOption((short) -1), new ShortOption()), greaterThan(0));
-        assertThat(cmp.compare(new ShortOption(), new ShortOption((short) -1)), lessThan(0));
+        compare(cmp, new ShortOption(), new ShortOption());
+        compare(cmp, new ShortOption((short) -1), new ShortOption());
+        compare(cmp, new ShortOption(), new ShortOption((short) -1));
     }
 
     /**
@@ -207,13 +208,13 @@ public class SerDeNativeTest {
     public void compare_int() throws Exception {
         Comparator<IntOption> cmp = comparator(MAPPER::jna_compare_int);
 
-        assertThat(cmp.compare(new IntOption(0), new IntOption(0)), is(0));
-        assertThat(cmp.compare(new IntOption(1), new IntOption(0)), greaterThan(0));
-        assertThat(cmp.compare(new IntOption(0), new IntOption(1)), lessThan(0));
+        compare(cmp, new IntOption(0), new IntOption(0));
+        compare(cmp, new IntOption(1), new IntOption(0));
+        compare(cmp, new IntOption(0), new IntOption(1));
 
-        assertThat(cmp.compare(new IntOption(), new IntOption()), is(0));
-        assertThat(cmp.compare(new IntOption(-1), new IntOption()), greaterThan(0));
-        assertThat(cmp.compare(new IntOption(), new IntOption(-1)), lessThan(0));
+        compare(cmp, new IntOption(), new IntOption());
+        compare(cmp, new IntOption(-1), new IntOption());
+        compare(cmp, new IntOption(), new IntOption(-1));
     }
 
     /**
@@ -224,13 +225,13 @@ public class SerDeNativeTest {
     public void compare_long() throws Exception {
         Comparator<LongOption> cmp = comparator(MAPPER::jna_compare_long);
 
-        assertThat(cmp.compare(new LongOption(0), new LongOption(0)), is(0));
-        assertThat(cmp.compare(new LongOption(1), new LongOption(0)), greaterThan(0));
-        assertThat(cmp.compare(new LongOption(0), new LongOption(1)), lessThan(0));
+        compare(cmp, new LongOption(0), new LongOption(0));
+        compare(cmp, new LongOption(1), new LongOption(0));
+        compare(cmp, new LongOption(0), new LongOption(1));
 
-        assertThat(cmp.compare(new LongOption(), new LongOption()), is(0));
-        assertThat(cmp.compare(new LongOption(-1), new LongOption()), greaterThan(0));
-        assertThat(cmp.compare(new LongOption(), new LongOption(-1)), lessThan(0));
+        compare(cmp, new LongOption(), new LongOption());
+        compare(cmp, new LongOption(-1), new LongOption());
+        compare(cmp, new LongOption(), new LongOption(-1));
     }
 
     /**
@@ -241,13 +242,13 @@ public class SerDeNativeTest {
     public void compare_float() throws Exception {
         Comparator<FloatOption> cmp = comparator(MAPPER::jna_compare_float);
 
-        assertThat(cmp.compare(new FloatOption(0), new FloatOption(0)), is(0));
-        assertThat(cmp.compare(new FloatOption(1), new FloatOption(0)), greaterThan(0));
-        assertThat(cmp.compare(new FloatOption(0), new FloatOption(1)), lessThan(0));
+        compare(cmp, new FloatOption(0), new FloatOption(0));
+        compare(cmp, new FloatOption(1), new FloatOption(0));
+        compare(cmp, new FloatOption(0), new FloatOption(1));
 
-        assertThat(cmp.compare(new FloatOption(), new FloatOption()), is(0));
-        assertThat(cmp.compare(new FloatOption(-1), new FloatOption()), greaterThan(0));
-        assertThat(cmp.compare(new FloatOption(), new FloatOption(-1)), lessThan(0));
+        compare(cmp, new FloatOption(), new FloatOption());
+        compare(cmp, new FloatOption(-1), new FloatOption());
+        compare(cmp, new FloatOption(), new FloatOption(-1));
     }
 
     /**
@@ -258,13 +259,13 @@ public class SerDeNativeTest {
     public void compare_double() throws Exception {
         Comparator<DoubleOption> cmp = comparator(MAPPER::jna_compare_double);
 
-        assertThat(cmp.compare(new DoubleOption(0), new DoubleOption(0)), is(0));
-        assertThat(cmp.compare(new DoubleOption(1), new DoubleOption(0)), greaterThan(0));
-        assertThat(cmp.compare(new DoubleOption(0), new DoubleOption(1)), lessThan(0));
+        compare(cmp, new DoubleOption(0), new DoubleOption(0));
+        compare(cmp, new DoubleOption(1), new DoubleOption(0));
+        compare(cmp, new DoubleOption(0), new DoubleOption(1));
 
-        assertThat(cmp.compare(new DoubleOption(), new DoubleOption()), is(0));
-        assertThat(cmp.compare(new DoubleOption(-1), new DoubleOption()), greaterThan(0));
-        assertThat(cmp.compare(new DoubleOption(), new DoubleOption(-1)), lessThan(0));
+        compare(cmp, new DoubleOption(), new DoubleOption());
+        compare(cmp, new DoubleOption(-1), new DoubleOption());
+        compare(cmp, new DoubleOption(), new DoubleOption(-1));
     }
 
     /**
@@ -275,13 +276,13 @@ public class SerDeNativeTest {
     public void compare_date() throws Exception {
         Comparator<DateOption> cmp = comparator(MAPPER::jna_compare_date);
 
-        assertThat(cmp.compare(newDate(0), newDate(0)), is(0));
-        assertThat(cmp.compare(newDate(1), newDate(0)), greaterThan(0));
-        assertThat(cmp.compare(newDate(0), newDate(1)), lessThan(0));
+        compare(cmp, newDate(0), newDate(0));
+        compare(cmp, newDate(1), newDate(0));
+        compare(cmp, newDate(0), newDate(1));
 
-        assertThat(cmp.compare(new DateOption(), new DateOption()), is(0));
-        assertThat(cmp.compare(newDate(0), new DateOption()), greaterThan(0));
-        assertThat(cmp.compare(new DateOption(), newDate(0)), lessThan(0));
+        compare(cmp, new DateOption(), new DateOption());
+        compare(cmp, newDate(0), new DateOption());
+        compare(cmp, new DateOption(), newDate(0));
     }
 
     /**
@@ -292,13 +293,13 @@ public class SerDeNativeTest {
     public void compare_date_time() throws Exception {
         Comparator<DateTimeOption> cmp = comparator(MAPPER::jna_compare_date_time);
 
-        assertThat(cmp.compare(newDateTime(0), newDateTime(0)), is(0));
-        assertThat(cmp.compare(newDateTime(1), newDateTime(0)), greaterThan(0));
-        assertThat(cmp.compare(newDateTime(0), newDateTime(1)), lessThan(0));
+        compare(cmp, newDateTime(0), newDateTime(0));
+        compare(cmp, newDateTime(1), newDateTime(0));
+        compare(cmp, newDateTime(0), newDateTime(1));
 
-        assertThat(cmp.compare(new DateTimeOption(), new DateTimeOption()), is(0));
-        assertThat(cmp.compare(newDateTime(0), new DateTimeOption()), greaterThan(0));
-        assertThat(cmp.compare(new DateTimeOption(), newDateTime(0)), lessThan(0));
+        compare(cmp, new DateTimeOption(), new DateTimeOption());
+        compare(cmp, newDateTime(0), new DateTimeOption());
+        compare(cmp, new DateTimeOption(), newDateTime(0));
     }
 
     /**
@@ -309,17 +310,17 @@ public class SerDeNativeTest {
     public void compare_string() throws Exception {
         Comparator<StringOption> cmp = comparator(MAPPER::jna_compare_string);
 
-        assertThat(cmp.compare(new StringOption("a"), new StringOption("a")), is(0));
-        assertThat(cmp.compare(new StringOption("b"), new StringOption("a")), greaterThan(0));
-        assertThat(cmp.compare(new StringOption("a"), new StringOption("b")), lessThan(0));
+        compare(cmp, new StringOption("a"), new StringOption("a"));
+        compare(cmp, new StringOption("b"), new StringOption("a"));
+        compare(cmp, new StringOption("a"), new StringOption("b"));
 
-        assertThat(cmp.compare(new StringOption("AAA"), new StringOption("AAA")), is(0));
-        assertThat(cmp.compare(new StringOption("ABA"), new StringOption("AAB")), greaterThan(0));
-        assertThat(cmp.compare(new StringOption("AAB"), new StringOption("ABA")), lessThan(0));
+        compare(cmp, new StringOption("AAA"), new StringOption("AAA"));
+        compare(cmp, new StringOption("ABA"), new StringOption("AAB"));
+        compare(cmp, new StringOption("AAB"), new StringOption("ABA"));
 
-        assertThat(cmp.compare(new StringOption(), new StringOption()), is(0));
-        assertThat(cmp.compare(new StringOption("a"), new StringOption()), greaterThan(0));
-        assertThat(cmp.compare(new StringOption(), new StringOption("a")), lessThan(0));
+        compare(cmp, new StringOption(), new StringOption());
+        compare(cmp, new StringOption("a"), new StringOption());
+        compare(cmp, new StringOption(), new StringOption("a"));
     }
 
     /**
@@ -330,21 +331,21 @@ public class SerDeNativeTest {
     public void compare_decimal() throws Exception {
         Comparator<DecimalOption> cmp = comparator(MAPPER::jna_compare_decimal);
 
-        assertThat(cmp.compare(newDecimal("1"), newDecimal("1")), is(0));
-        assertThat(cmp.compare(newDecimal("1.1"), newDecimal("1")), greaterThan(0));
-        assertThat(cmp.compare(newDecimal("1.10"), newDecimal("1")), greaterThan(0));
-        assertThat(cmp.compare(newDecimal("1.10"), newDecimal("2")), lessThan(0));
-        assertThat(cmp.compare(newDecimal("1"), newDecimal("1.1")), lessThan(0));
-        assertThat(cmp.compare(newDecimal("1"), newDecimal("1.10")), lessThan(0));
-        assertThat(cmp.compare(newDecimal("2"), newDecimal("1.10")), greaterThan(0));
+        compare(cmp, newDecimal("1"), newDecimal("1"));
+        compare(cmp, newDecimal("1.1"), newDecimal("1"));
+        compare(cmp, newDecimal("1.10"), newDecimal("1"));
+        compare(cmp, newDecimal("1.10"), newDecimal("2"));
+        compare(cmp, newDecimal("1"), newDecimal("1.1"));
+        compare(cmp, newDecimal("1"), newDecimal("1.10"));
+        compare(cmp, newDecimal("2"), newDecimal("1.10"));
 
-        assertThat(cmp.compare(newDecimal("1"), newDecimal("1")), is(0));
-        assertThat(cmp.compare(newDecimal("1"), newDecimal("-1")), greaterThan(0));
-        assertThat(cmp.compare(newDecimal("-1"), newDecimal("1")), lessThan(0));
+        compare(cmp, newDecimal("1"), newDecimal("1"));
+        compare(cmp, newDecimal("1"), newDecimal("-1"));
+        compare(cmp, newDecimal("-1"), newDecimal("1"));
 
-        assertThat(cmp.compare(new DecimalOption(), new DecimalOption()), is(0));
-        assertThat(cmp.compare(newDecimal("1.1"), new DecimalOption()), greaterThan(0));
-        assertThat(cmp.compare(new DecimalOption(), newDecimal("1.1")), lessThan(0));
+        compare(cmp, new DecimalOption(), new DecimalOption());
+        compare(cmp, newDecimal("1.1"), new DecimalOption());
+        compare(cmp, new DecimalOption(), newDecimal("1.1"));
     }
 
     private DateOption newDate(int v) {
@@ -357,6 +358,18 @@ public class SerDeNativeTest {
 
     private DecimalOption newDecimal(String v) {
         return new DecimalOption(new BigDecimal(v));
+    }
+
+    private static <T extends Comparable<? super T>> void compare(Comparator<T> cmp, T a, T b) {
+        int sign = a.compareTo(b);
+        int result = cmp.compare(a, b);
+        if (sign == 0) {
+            assertThat(result, equalTo(0));
+        } else if (sign < 0) {
+            assertThat(result, lessThan(0));
+        } else {
+            assertThat(result, greaterThan(0));
+        }
     }
 
     private <T extends ValueOption<?>> Comparator<T> comparator(BiFunction<Pointer, Pointer, Integer> func) {

@@ -42,6 +42,8 @@ import com.asakusafw.runtime.value.ValueOption;
 
 /**
  * Serializes/deserializes {@link ValueOption} objects.
+ * @since 0.1.0
+ * @version 0.2.0
  */
 @SuppressWarnings("deprecation")
 public final class ValueOptionSerDe {
@@ -140,6 +142,22 @@ public final class ValueOptionSerDe {
     }
 
     /**
+     * Compares two serialized {@link BooleanOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareBoolean(DataInput a, DataInput b) throws IOException {
+        byte aValue = a.readByte();
+        byte bValue = b.readByte();
+        return Byte.compare(aValue, bValue);
+    }
+
+    /**
      * Serializes {@link ByteOption} object.
      * @param option the target object
      * @param output the target output
@@ -167,6 +185,35 @@ public final class ValueOptionSerDe {
         } else {
             option.modify(input.readByte());
         }
+    }
+
+    /**
+     * Compares two serialized {@link ByteOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareByte(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Byte.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Byte.BYTES);
+            return +1;
+        }
+        byte aValue = a.readByte();
+        byte bValue = b.readByte();
+        return Byte.compare(aValue, bValue);
     }
 
     /**
@@ -200,6 +247,35 @@ public final class ValueOptionSerDe {
     }
 
     /**
+     * Compares two serialized {@link ShortOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareShort(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Short.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Short.BYTES);
+            return +1;
+        }
+        short aValue = a.readShort();
+        short bValue = b.readShort();
+        return Short.compare(aValue, bValue);
+    }
+
+    /**
      * Serializes {@link IntOption} object.
      * @param option the target object
      * @param output the target output
@@ -227,6 +303,35 @@ public final class ValueOptionSerDe {
         } else {
             option.modify(input.readInt());
         }
+    }
+
+    /**
+     * Compares two serialized {@link IntOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareInt(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Integer.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Integer.BYTES);
+            return +1;
+        }
+        int aValue = a.readInt();
+        int bValue = b.readInt();
+        return Integer.compare(aValue, bValue);
     }
 
     /**
@@ -260,6 +365,35 @@ public final class ValueOptionSerDe {
     }
 
     /**
+     * Compares two serialized {@link LongOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareLong(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Long.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Long.BYTES);
+            return +1;
+        }
+        long aValue = a.readLong();
+        long bValue = b.readLong();
+        return Long.compare(aValue, bValue);
+    }
+
+    /**
      * Serializes {@link FloatOption} object.
      * @param option the target object
      * @param output the target output
@@ -287,6 +421,35 @@ public final class ValueOptionSerDe {
         } else {
             option.modify(input.readFloat());
         }
+    }
+
+    /**
+     * Compares two serialized {@link FloatOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareFloat(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Float.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Float.BYTES);
+            return +1;
+        }
+        float aValue = a.readFloat();
+        float bValue = b.readFloat();
+        return Float.compare(aValue, bValue);
     }
 
     /**
@@ -320,6 +483,35 @@ public final class ValueOptionSerDe {
     }
 
     /**
+     * Compares two serialized {@link DoubleOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareDouble(DataInput a, DataInput b) throws IOException {
+        byte aHeader = a.readByte();
+        byte bHeader = b.readByte();
+        if (aHeader == NULL_HEADER) {
+            if (bHeader == NULL_HEADER) {
+                return 0;
+            } else {
+                skip(b, Double.BYTES);
+                return -1;
+            }
+        } else if (bHeader == NULL_HEADER) {
+            skip(a, Double.BYTES);
+            return +1;
+        }
+        double aValue = a.readDouble();
+        double bValue = b.readDouble();
+        return Double.compare(aValue, bValue);
+    }
+
+    /**
      * Serializes {@link DateOption} object.
      * @param option the target object
      * @param output the target output
@@ -350,6 +542,22 @@ public final class ValueOptionSerDe {
     }
 
     /**
+     * Compares two serialized {@link DateOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareDate(DataInput a, DataInput b) throws IOException {
+        int aValue = a.readInt();
+        int bValue = b.readInt();
+        return Integer.compare(aValue, bValue);
+    }
+
+    /**
      * Serializes {@link DateTimeOption} object.
      * @param option the target object
      * @param output the target output
@@ -377,6 +585,22 @@ public final class ValueOptionSerDe {
         } else {
             option.modify(value);
         }
+    }
+
+    /**
+     * Compares two serialized {@link DateTimeOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareDateTime(DataInput a, DataInput b) throws IOException {
+        long aValue = a.readLong();
+        long bValue = b.readLong();
+        return Long.compare(aValue, bValue);
     }
 
     /**
@@ -421,6 +645,70 @@ public final class ValueOptionSerDe {
             byte[] buffer = getLocalBuffer(length, Integer.MAX_VALUE);
             input.readFully(buffer, 0, length);
             option.modify(buffer, 0, length);
+        }
+    }
+
+    /**
+     * Compares two serialized {@link StringOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareString(DataInput a, DataInput b) throws IOException {
+        int aLength = readCompactInt(a);
+        int bLength = readCompactInt(b);
+        if (aLength == UNSIGNED_NULL) {
+            if (bLength == UNSIGNED_NULL) {
+                return 0;
+            } else {
+                skip(b, bLength);
+                return -1;
+            }
+        } else if (bLength == UNSIGNED_NULL) {
+            skip(a, aLength);
+            return +1;
+        }
+        for (int i = 0, n = Math.min(aLength, bLength); i < n; i++) {
+            int aChar = Byte.toUnsignedInt(a.readByte());
+            int bChar = Byte.toUnsignedInt(b.readByte());
+            if (aChar != bChar) {
+                skip(a, aLength - (i + 1));
+                skip(b, bLength - (i + 1));
+                if (aChar < bChar) {
+                    return -1;
+                } else {
+                    return +1;
+                }
+            }
+        }
+        if (aLength == bLength) {
+            return 0;
+        } else if (aLength < bLength) {
+            skip(b, bLength - aLength);
+            return -1;
+        } else {
+            skip(a, aLength - bLength);
+            return +1;
+        }
+    }
+
+    private static void skip(DataInput input, int length) throws IOException {
+        if (length == 0) {
+            return;
+        }
+        int rest = length;
+        while (rest > 0) {
+            int skipped = input.skipBytes(rest);
+            if (skipped <= 0) {
+                input.readByte();
+                rest--;
+            } else {
+                rest -= skipped;
+            }
         }
     }
 
@@ -474,10 +762,35 @@ public final class ValueOptionSerDe {
      * @throws IOException if I/O error was occurred while deserializing the object
      */
     public static void deserialize(DecimalOption option, DataInput input) throws IOException {
+        option.modify(deserializeDecimal(input));
+    }
+
+    /**
+     * Compares two serialized {@link DecimalOption}s in each given {@link DataInput}.
+     * @param a the first {@link DataInput}
+     * @param b the second {@link DataInput}
+     * @return {@code 0} - the two values are both equivalent,
+     *   {@code < 0} - the first value is less than the second one, or
+     *   {@code > 0} - the second value is less than the second one
+     * @throws IOException if I/O error was occurred while comparing the values
+     * @since 0.2.0
+     */
+    public static int compareDecimal(DataInput a, DataInput b) throws IOException {
+        BigDecimal aValue = deserializeDecimal(a);
+        BigDecimal bValue = deserializeDecimal(b);
+        if (aValue == null) {
+            return bValue == null ? 0 : -1;
+        } else if (bValue == null) {
+            return +1;
+        } else {
+            return aValue.compareTo(bValue);
+        }
+    }
+
+    private static BigDecimal deserializeDecimal(DataInput input) throws IOException {
         byte head = input.readByte();
         if (head == DECIMAL_NULL) {
-            option.setNull();
-            return;
+            return null;
         }
         boolean compact = (head & DECIMAL_COMPACT_MASK) != 0;
         boolean plus = (head & DECIMAL_PLUS_MASK) != 0;
@@ -485,7 +798,7 @@ public final class ValueOptionSerDe {
         if (compact) {
             long unscaled = readCompactLong(input);
             assert unscaled >= 0;
-            option.modify(BigDecimal.valueOf(plus ? unscaled : -unscaled, scale));
+            return BigDecimal.valueOf(plus ? unscaled : -unscaled, scale);
         } else {
             int length = readCompactInt(input);
             assert length != 0; // '0' must be compact form
@@ -495,7 +808,7 @@ public final class ValueOptionSerDe {
             if (offset > 0) {
                 Arrays.fill(buffer, 0, offset, (byte) 0);
             }
-            option.modify(new BigDecimal(new BigInteger(plus ? +1 : -1, buffer), scale));
+            return new BigDecimal(new BigInteger(plus ? +1 : -1, buffer), scale);
         }
     }
 

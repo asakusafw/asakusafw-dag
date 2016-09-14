@@ -238,7 +238,7 @@ public final class KeyValueSerDeGenerator {
         @Override
         public int hashCode() {
             final int prime = 31;
-            int result = 1;
+            int result = Key.class.hashCode();
             result = prime * result + Objects.hashCode(type);
             result = prime * result + Objects.hashCode(group);
             return result;
