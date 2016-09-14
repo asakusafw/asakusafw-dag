@@ -168,12 +168,14 @@ public class BasicConnectionPool implements ConnectionPool {
         }
         try (Closer closer = new Closer()) {
             closer.add(JdbcUtil.wrap(connection::close));
-            if (connection.isClosed() == false && connection.getAutoCommit() == false) {
-                connection.rollback();
-            }
-            if (poolClosed == false) {
-                closer.keep();
+            if (connection.isClosed() == false) {
+                if (connection.getAutoCommit() == false) {
+                    connection.rollback();
+                }
                 cached.add(connection);
+                if (poolClosed == false) {
+                    closer.keep();
+                }
             }
         } catch (SQLException e) {
             throw JdbcUtil.wrap(e);
