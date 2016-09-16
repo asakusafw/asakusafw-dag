@@ -32,6 +32,8 @@ public interface CounterGroup {
 
     /**
      * Represents a column meta-data of {@link CounterGroup}.
+     * @since 0.1.0
+     * @version 0.2.0
      */
     interface Column {
 
@@ -40,6 +42,15 @@ public interface CounterGroup {
          * @return the description of this column
          */
         String getDescription();
+
+        /**
+         * Returns the index text of this column.
+         * @return the index text
+         * @since 0.2.0
+         */
+        default String getIndexText() {
+            return String.format("?.%s", getDescription()); //$NON-NLS-1$
+        }
     }
 
     /**

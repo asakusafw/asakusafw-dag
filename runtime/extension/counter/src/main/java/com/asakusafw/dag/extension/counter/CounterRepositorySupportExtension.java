@@ -18,6 +18,7 @@ package com.asakusafw.dag.extension.counter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ import com.asakusafw.dag.api.counter.basic.BasicCounterRepository;
 import com.asakusafw.dag.api.processor.ProcessorContext;
 import com.asakusafw.dag.api.processor.extension.ProcessorContextExtension;
 import com.asakusafw.dag.utils.common.InterruptibleIo;
+import com.asakusafw.dag.utils.common.Tuple;
 
 /**
  * Enables {@link CounterRepository}.
@@ -83,15 +85,22 @@ public class CounterRepositorySupportExtension implements ProcessorContextExtens
             Map<Column, Long> total = new LinkedHashMap<>();
             members.forEach((item, counters) -> {
                 LOG.info(String.format("  %s:", item));
-                counters.forEach((column, value) -> {
+                forEachColumns(counters, (column, value) -> {
                     LOG.info(String.format("    %s: %,d", column.getDescription(), value));
                 });
                 CounterRepository.mergeInto(counters, total);
             });
             LOG.info(String.format("  %s:", "(TOTAL)"));
-            total.forEach((column, value) -> {
+            forEachColumns(total, (column, value) -> {
                 LOG.info(String.format("    %s: %,d", column.getDescription(), value));
             });
         });
+    }
+
+    private static <T> void forEachColumns(Map<Column, T> map, BiConsumer<Column, T> action) {
+        map.entrySet().stream()
+            .map(Tuple::of)
+            .sorted((a, b) -> a.left().getIndexText().compareTo(b.left().getIndexText()))
+            .forEachOrdered(t -> action.accept(t.left(), t.right()));
     }
 }
