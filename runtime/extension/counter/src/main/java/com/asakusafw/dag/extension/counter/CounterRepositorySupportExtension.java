@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import com.asakusafw.dag.api.counter.CounterGroup.Category;
 import com.asakusafw.dag.api.counter.CounterGroup.Column;
+import com.asakusafw.dag.api.counter.CounterGroup.Element;
 import com.asakusafw.dag.api.counter.CounterGroup.Scope;
 import com.asakusafw.dag.api.counter.CounterRepository;
 import com.asakusafw.dag.api.counter.basic.BasicCounterRepository;
@@ -80,24 +81,24 @@ public class CounterRepositorySupportExtension implements ProcessorContextExtens
                                 CounterRepository.Entry::getCounters,
                                 CounterRepository::merge,
                                 TreeMap::new)));
-        categories.forEach((category, members) -> {
+        forEachElement(categories, (category, members) -> {
             LOG.info(String.format("%s: %,d entries", category.getDescription(), members.size()));
             Map<Column, Long> total = new LinkedHashMap<>();
             members.forEach((item, counters) -> {
                 LOG.info(String.format("  %s:", item));
-                forEachColumns(counters, (column, value) -> {
+                forEachElement(counters, (column, value) -> {
                     LOG.info(String.format("    %s: %,d", column.getDescription(), value));
                 });
                 CounterRepository.mergeInto(counters, total);
             });
             LOG.info(String.format("  %s:", "(TOTAL)"));
-            forEachColumns(total, (column, value) -> {
+            forEachElement(total, (column, value) -> {
                 LOG.info(String.format("    %s: %,d", column.getDescription(), value));
             });
         });
     }
 
-    private static <T> void forEachColumns(Map<Column, T> map, BiConsumer<Column, T> action) {
+    private static <K extends Element, V> void forEachElement(Map<K, V> map, BiConsumer<K, V> action) {
         map.entrySet().stream()
             .map(Tuple::of)
             .sorted((a, b) -> a.left().getIndexText().compareTo(b.left().getIndexText()))

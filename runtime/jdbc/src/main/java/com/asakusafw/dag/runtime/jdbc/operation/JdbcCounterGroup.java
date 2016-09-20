@@ -37,6 +37,7 @@ public final class JdbcCounterGroup extends AbstractCounterGroup {
             "JDBC input",
             Scope.GRAPH,
             Collections.singletonList(StandardColumn.INPUT_RECORD),
+            "jdbc-0-input", //$NON-NLS-1$
             () -> new JdbcCounterGroup(StandardColumn.INPUT_RECORD));
 
     /**
@@ -46,6 +47,7 @@ public final class JdbcCounterGroup extends AbstractCounterGroup {
             "JDBC output",
             Scope.GRAPH,
             Collections.singletonList(StandardColumn.OUTPUT_RECORD),
+            "jdbc-1-output", //$NON-NLS-1$
             () -> new JdbcCounterGroup(StandardColumn.OUTPUT_RECORD));
 
     private final LongAdder counter;
