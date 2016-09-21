@@ -38,6 +38,7 @@ public class DirectFileCounterGroup implements CounterGroup {
             "Direct I/O file input",
             Scope.GRAPH,
             Arrays.asList(StandardColumn.INPUT_FILE_SIZE, StandardColumn.INPUT_RECORD),
+            "directio-0-input", //$NON-NLS-1$
             () -> new DirectFileCounterGroup(StandardColumn.INPUT_FILE_SIZE, StandardColumn.INPUT_RECORD));
 
     /**
@@ -47,6 +48,7 @@ public class DirectFileCounterGroup implements CounterGroup {
             "Direct I/O file output",
             Scope.GRAPH,
             Arrays.asList(StandardColumn.OUTPUT_FILE_SIZE, StandardColumn.OUTPUT_RECORD),
+            "directio-1-output", //$NON-NLS-1$
             () -> new DirectFileCounterGroup(StandardColumn.OUTPUT_FILE_SIZE, StandardColumn.OUTPUT_RECORD));
 
     private final Map<Column, Counter> counters = new LinkedHashMap<>();

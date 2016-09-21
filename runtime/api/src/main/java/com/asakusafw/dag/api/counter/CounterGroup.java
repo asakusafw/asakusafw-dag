@@ -31,28 +31,42 @@ public interface CounterGroup {
     long getCount(Column column);
 
     /**
-     * Represents a column meta-data of {@link CounterGroup}.
+     * An abstract super interface of counter elements.
+     * @since 0.2.0
      */
-    interface Column {
+    interface Element {
 
         /**
-         * Returns the description of this column.
-         * @return the description of this column
+         * Returns the description of this element.
+         * @return the description of this element
          */
         String getDescription();
+
+        /**
+         * Returns the index text of this element.
+         * @return the index text
+         */
+        default String getIndexText() {
+            return String.format("?.%s", getDescription()); //$NON-NLS-1$
+        }
+    }
+
+    /**
+     * Represents a column meta-data of {@link CounterGroup}.
+     * @since 0.1.0
+     * @version 0.2.0
+     */
+    interface Column extends Element {
+        // no special methods
     }
 
     /**
      * Represents a category of {@link CounterGroup}.
      * @param <T> the type of member {@link CounterGroup}
+     * @since 0.1.0
+     * @version 0.2.0
      */
-    interface Category<T extends CounterGroup> {
-
-        /**
-         * Returns the description of the target {@link CounterGroup}.
-         * @return the description
-         */
-        String getDescription();
+    interface Category<T extends CounterGroup> extends Element {
 
         /**
          * Returns the scope of the target {@link CounterGroup}.

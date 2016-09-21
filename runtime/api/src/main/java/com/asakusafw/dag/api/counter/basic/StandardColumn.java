@@ -68,4 +68,9 @@ public enum StandardColumn implements CounterGroup.Column {
     public String getDescription() {
         return description;
     }
+
+    @Override
+    public String getIndexText() {
+        return String.format("STANDARD.%04d", ordinal()); //$NON-NLS-1$
+    }
 }
