@@ -15,9 +15,8 @@
  */
 package com.asakusafw.dag.runtime.io;
 
-import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 import java.io.DataOutput;
 import java.io.File;

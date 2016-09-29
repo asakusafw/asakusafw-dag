@@ -31,6 +31,7 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator.Builder;
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor;
 import com.asakusafw.runtime.core.Report;
 import com.asakusafw.runtime.core.Result;
+import com.asakusafw.runtime.core.legacy.LegacyReport;
 import com.asakusafw.runtime.testing.MockResult;
 import com.asakusafw.vocabulary.operator.Logging;
 
@@ -46,11 +47,11 @@ public class LoggingOperatorGeneratorTest extends OperatorNodeGeneratorTestRoot 
     public final ExternalResource REPORT = new ExternalResource() {
         @Override
         protected void before() throws Throwable {
-            Report.setDelegate(new Report.Default());
+            LegacyReport.setDelegate(new Report.Default());
         }
         @Override
         protected void after() {
-            Report.setDelegate(null);
+            LegacyReport.setDelegate(null);
         }
     };
 
