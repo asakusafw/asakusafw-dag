@@ -29,6 +29,7 @@ import com.asakusafw.dag.compiler.codegen.OperatorNodeGenerator.NodeInfo;
 import com.asakusafw.dag.runtime.adapter.ObjectCopier;
 import com.asakusafw.dag.runtime.testing.MockDataModel;
 import com.asakusafw.dag.runtime.testing.MockSink;
+import com.asakusafw.dag.utils.common.Lang;
 import com.asakusafw.lang.compiler.model.description.Descriptions;
 import com.asakusafw.lang.compiler.model.graph.Groups;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
@@ -117,6 +118,66 @@ public class SummarizeOperatorGeneratorTest extends OperatorNodeGeneratorTestRoo
         assertThat(results.get(e -> e.getMaxOption().getAsString()), contains("C"));
         assertThat(results.get(e -> e.getSumOption().get()), contains(new BigDecimal("60")));
     }
+    /**
+     * null in any targets.
+     */
+    @SuppressWarnings("deprecation")
+    @Test
+    public void null_any() {
+        UserOperator operator = load("simple").build();
+        AggregateNodeInfo info = (AggregateNodeInfo) generate(operator);
+        assertThat(info.getMapperType(), is(notNullValue()));
+        loading(info.getMapperType(), c -> {
+            @SuppressWarnings("unchecked")
+            Function<Object, Object> f = (Function<Object, Object>) c.newInstance();
+            MockDataModel m = new MockDataModel(100, new BigDecimal("123"), "Hello, world!");
+            m.getKeyOption().setNull();
+            f.apply(m);
+            // ok
+        });
+    }
+
+    /**
+     * null in sum targets.
+     */
+    @Test
+    public void null_sum() {
+        UserOperator operator = load("simple").build();
+        AggregateNodeInfo info = (AggregateNodeInfo) generate(operator);
+        assertThat(info.getMapperType(), is(notNullValue()));
+        loading(info.getMapperType(), c -> {
+            @SuppressWarnings("unchecked")
+            Function<Object, Object> f = (Function<Object, Object>) c.newInstance();
+            MockDataModel m = new MockDataModel(100, null, "Hello, world!");
+            try {
+                f.apply(m);
+                fail();
+            } catch (NullPointerException e) {
+                Lang.pass(e);
+            }
+        });
+    }
+
+    /**
+     * null in max targets.
+     */
+    @Test
+    public void null_max() {
+        UserOperator operator = load("simple").build();
+        AggregateNodeInfo info = (AggregateNodeInfo) generate(operator);
+        assertThat(info.getMapperType(), is(notNullValue()));
+        loading(info.getMapperType(), c -> {
+            @SuppressWarnings("unchecked")
+            Function<Object, Object> f = (Function<Object, Object>) c.newInstance();
+            MockDataModel m = new MockDataModel(100, new BigDecimal("123"), null);
+            try {
+                f.apply(m);
+                fail();
+            } catch (NullPointerException e) {
+                Lang.pass(e);
+            }
+        });
+    }
 
     private Builder load(String name) {
         return OperatorExtractor.extract(Summarize.class, Op.class, name)
@@ -167,7 +228,7 @@ public class SummarizeOperatorGeneratorTest extends OperatorNodeGeneratorTestRoo
             cntOption.modify(1L);
             minOption.modify(value);
             maxOption.modify(value);
-            sumOption.modify(new BigDecimal(sort));
+            sumOption.modify(sort == null ? null : new BigDecimal(sort));
         }
 
         public IntOption getKeyOption() {
