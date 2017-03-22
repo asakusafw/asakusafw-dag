@@ -49,7 +49,7 @@ import com.asakusafw.runtime.value.ValueOption;
 /**
  * Utilities for ASM.
  * @since 0.1.0
- * @version 0.1.1
+ * @version 0.1.4
  */
 public final class AsmUtil {
 
@@ -316,7 +316,7 @@ public final class AsmUtil {
     }
 
     /**
-     * Adds a string array on to the top of the stack.
+     * Adds an array on to the top of the stack.
      * @param method the current method visitor
      * @param values the array elements
      */
@@ -327,6 +327,24 @@ public final class AsmUtil {
             method.visitInsn(Opcodes.DUP);
             getInt(method, index);
             getConst(method, values[index]);
+            method.visitInsn(Opcodes.AASTORE);
+        }
+    }
+
+    /**
+     * Adds an array on to the top of the stack.
+     * @param method the current method visitor
+     * @param elementType the element type
+     * @param values the array elements
+     * @since 0.1.4
+     */
+    public static void getArray(MethodVisitor method, Type elementType, LocalVarRef[] values) {
+        getInt(method, values.length);
+        method.visitTypeInsn(Opcodes.ANEWARRAY, elementType.getInternalName());
+        for (int index = 0; index < values.length; index++) {
+            method.visitInsn(Opcodes.DUP);
+            getInt(method, index);
+            values[index].load(method);
             method.visitInsn(Opcodes.AASTORE);
         }
     }
@@ -419,7 +437,19 @@ public final class AsmUtil {
     }
 
     /**
-     * Copies a {@code ValueOption}.
+     * Invokes {@code ValueOption#isNull()}.
+     * @param method the target method
+     * @param dataType the data type
+     */
+    public static void getNullity(MethodVisitor method, TypeDescription dataType) {
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                typeOf(dataType).getInternalName(), "isNull",
+                Type.getMethodDescriptor(Type.BOOLEAN_TYPE),
+                false);
+    }
+
+    /**
+     * Invokes {@code ValueOption#copyFrom(ValueOption)}.
      * @param method the target method
      * @param dataType the data type
      */
@@ -443,7 +473,19 @@ public final class AsmUtil {
     }
 
     /**
-     * Copies a {@code DataModel}.
+     * Invokes {@code DataModel#reset()}.
+     * @param method the target method
+     * @param dataType the data type
+     */
+    public static void resetDataModel(MethodVisitor method, TypeDescription dataType) {
+        method.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                typeOf(dataType).getInternalName(), "reset",
+                Type.getMethodDescriptor(Type.VOID_TYPE),
+                false);
+    }
+
+    /**
+     * Invokes {@code DataModel#copyFrom(DataModel)}.
      * @param method the target method
      * @param dataType the data type
      */
